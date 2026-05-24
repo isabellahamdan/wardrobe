@@ -1,0 +1,619 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Maison — Personal Atelier</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0A0A0A; --surface: #111; --border: #1C1C1C; --border-light: #242424;
+    --accent: #8C6A5A; --accent-light: #A8806E; --text: #E8E0D8;
+    --text-mid: #8A8078; --text-dim: #3A3530; --burgundy: #5C2233;
+    --day: #3A3530; --work: #2E3F6F; --night: #5C2233; --event: #4A4A6A;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 2px; } ::-webkit-scrollbar-thumb { background: #2a2a2a; }
+  input, textarea, button { font-family: inherit; outline: none; }
+  button { cursor: pointer; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.9} }
+  @keyframes pop { from { opacity:0; transform:scale(0.97) } to { opacity:1; transform:scale(1) } }
+
+  /* HEADER */
+  .header { border-bottom: 1px solid var(--border); padding: 28px 24px 0; }
+  .header-inner { max-width: 520px; margin: 0 auto; }
+  .label { font-size: 9px; letter-spacing: 0.35em; color: var(--text-mid); text-transform: uppercase; margin-bottom: 8px; }
+  .logo { font-size: 32px; font-weight: 300; font-style: italic; margin-bottom: 24px; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 20px 12px; background: transparent; border: none; border-bottom: 1px solid transparent;
+    color: var(--text-mid); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s; margin-bottom: -1px; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* MAIN */
+  .main { max-width: 520px; margin: 0 auto; padding: 28px 24px 100px; }
+
+  /* BUTTONS */
+  .btn-primary { background: var(--burgundy); border: 1px solid var(--burgundy); color: #F0E8E0;
+    padding: 15px; width: 100%; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    border-radius: 2px; transition: all 0.2s; }
+  .btn-primary:disabled { background: transparent; border-color: var(--border); color: var(--text-dim); cursor: default; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-mid);
+    padding: 13px; font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; border-radius: 2px; }
+
+  /* OCCASION GRID */
+  .occasion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .occasion-btn { padding: 14px 16px; border-radius: 2px; text-align: left; background: transparent;
+    border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .occasion-btn.active { background: #160d10; border-color: var(--accent); }
+  .occasion-btn .occ-label { font-size: 14px; color: var(--text-mid); letter-spacing: 0.08em; margin-bottom: 3px; }
+  .occasion-btn.active .occ-label { color: var(--text); }
+  .occasion-btn .occ-sub { font-size: 10px; color: var(--text-dim); font-style: italic; }
+
+  /* MOOD LIST */
+  .mood-btn { width: 100%; padding: 15px 18px; background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 2px; }
+  .mood-btn.active { background: #160d10; border-color: var(--accent); }
+  .mood-label { font-size: 14px; color: var(--text-mid); }
+  .mood-btn.active .mood-label { color: var(--text); }
+  .mood-sub { font-size: 11px; color: var(--text-dim); font-style: italic; }
+  .mood-btn.active .mood-sub { color: var(--accent-light); }
+
+  /* RESULT */
+  .result-header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 24px; }
+  .result-title { font-size: 28px; font-weight: 300; font-style: italic; line-height: 1.2; margin-bottom: 6px; }
+  .result-color { font-size: 12px; color: var(--text-mid); font-style: italic; }
+  .piece-row { display: grid; grid-template-columns: 1px 1fr; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+  .piece-line { width: 1px; margin-top: 4px; background: var(--text-dim); }
+  .piece-line.first { background: var(--accent); }
+  .piece-name { font-size: 15px; color: var(--text); margin-bottom: 3px; }
+  .piece-note { font-size: 11px; color: var(--text-mid); font-style: italic; }
+  .notes-box { background: #0F0D0C; border: 1px solid var(--border); border-radius: 2px; padding: 20px 22px; margin: 20px 0 14px; }
+  .stylist-note { font-size: 14px; line-height: 1.9; color: #B0A89E; font-style: italic; margin-bottom: 16px; }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .notes-key { font-size: 9px; letter-spacing: 0.3em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 5px; }
+  .notes-val { font-size: 13px; color: var(--text-mid); font-style: italic; }
+
+  /* CHAT */
+  .chat-box { border: 1px solid var(--border); border-radius: 2px; margin-bottom: 14px; overflow: hidden; }
+  .chat-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 9px; letter-spacing: 0.3em; color: var(--text-dim); text-transform: uppercase; }
+  .chat-messages { padding: 14px 16px; max-height: 180px; overflow-y: auto; }
+  .chat-msg-ai { font-size: 13px; color: #A09890; line-height: 1.7; font-style: italic; margin-bottom: 10px; }
+  .chat-msg-user { font-size: 13px; color: var(--text); line-height: 1.7; text-align: right; margin-bottom: 10px; }
+  .chat-input-row { display: flex; border-top: 1px solid var(--border); }
+  .chat-input { flex: 1; background: transparent; border: none; padding: 13px 16px; color: var(--text); font-size: 13px; font-family: inherit; }
+  .chat-send { padding: 13px 18px; background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-mid); font-size: 16px; }
+
+  /* WARDROBE */
+  .wardrobe-subnav { display: flex; gap: 8px; margin-bottom: 28px; }
+  .subnav-btn { flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text-mid); font-size: 11px; letter-spacing: 0.25em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .subnav-btn.active { background: var(--surface); border-color: var(--border-light); color: var(--text); }
+  .subnav-btn.add { }
+  .subnav-btn.add.active { background: var(--burgundy); border-color: var(--burgundy); color: #F0E8E0; }
+
+  /* UPLOAD ZONE */
+  .upload-zone { border: 1px dashed var(--border); border-radius: 2px; padding: 40px 32px;
+    text-align: center; cursor: pointer; margin-bottom: 20px; transition: all 0.2s; }
+  .upload-zone:hover { border-color: var(--accent); }
+  .upload-title { font-size: 11px; color: var(--text-dim); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 6px; }
+  .upload-sub { font-size: 11px; color: var(--text-dim); font-style: italic; }
+
+  /* QUEUE GRID */
+  .queue-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 20px; }
+  .queue-item { position: relative; }
+  .queue-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 2px; display: block; }
+  .queue-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px;
+    border-radius: 50%; background: rgba(0,0,0,0.75); border: none; color: #ccc;
+    font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* TAG GRID */
+  .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .tag-btn { padding: 13px 10px; background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text-mid); font-size: 12px; letter-spacing: 0.15em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+
+  /* GALLERY */
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filter-btn { padding: 5px 14px; background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text-dim); font-size: 9px; letter-spacing: 0.25em;
+    text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent-light); }
+  .gallery-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .gallery-item { background: var(--surface); border-radius: 2px; overflow: hidden; border: 1px solid var(--border); animation: pop 0.3s ease; }
+  .gallery-img-wrap { position: relative; }
+  .gallery-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+  .gallery-tag { position: absolute; top: 6px; left: 6px; padding: 2px 7px; border-radius: 2px; }
+  .gallery-tag span { font-size: 8px; letter-spacing: 0.2em; color: #E8E0D8; text-transform: uppercase; }
+  .gallery-info { padding: 8px 10px 10px; }
+  .gallery-occ { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2px; }
+
+  /* FEEDBACK */
+  .feedback { background: #0d1a0d; border: 1px solid #2a4a2a; border-radius: 2px;
+    padding: 14px 16px; margin-bottom: 16px; font-size: 12px; color: #6a9e6a;
+    font-style: italic; animation: fadeUp 0.3s ease; }
+  .section-label { font-size: 9px; letter-spacing: 0.35em; color: var(--text-mid); text-transform: uppercase; margin-bottom: 14px; }
+  .empty-state { text-align: center; padding: 60px 0; }
+  .empty-text { font-size: 13px; color: var(--text-dim); font-style: italic; margin-bottom: 16px; }
+  .loading-dot { font-size: 11px; color: var(--text-dim); font-style: italic; animation: pulse 1.5s infinite; }
+  .context-textarea { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 2px;
+    padding: 14px 16px; color: var(--text); font-size: 14px; resize: none; font-family: inherit; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="label">Personal Atelier</div>
+    <div class="logo">Maison</div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('stylist', this)">Style Me</button>
+      <button class="tab" onclick="switchTab('wardrobe', this)" id="archive-tab">My Archive</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- STYLIST TAB -->
+  <div id="tab-stylist" style="animation: fadeUp 0.4s ease">
+
+    <!-- FORM -->
+    <div id="stylist-form">
+      <div style="margin-bottom:32px">
+        <div class="section-label">Where</div>
+        <div class="occasion-grid">
+          <button class="occasion-btn" onclick="selectOccasion('Day','Casual, errands, weekend',this)">
+            <div class="occ-label">Day</div><div class="occ-sub">Casual, errands, weekend</div>
+          </button>
+          <button class="occasion-btn" onclick="selectOccasion('Work','Professional, meetings',this)">
+            <div class="occ-label">Work</div><div class="occ-sub">Professional, meetings</div>
+          </button>
+          <button class="occasion-btn" onclick="selectOccasion('Night Out','Dinner, drinks, dates',this)">
+            <div class="occ-label">Night Out</div><div class="occ-sub">Dinner, drinks, dates</div>
+          </button>
+          <button class="occasion-btn" onclick="selectOccasion('Event','Party, celebration, special',this)">
+            <div class="occ-label">Event</div><div class="occ-sub">Party, celebration, special</div>
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:32px">
+        <div class="section-label">Mood</div>
+        <button class="mood-btn" onclick="selectMood('Confident',this)"><span class="mood-label">Confident</span><span class="mood-sub">Bold. Architectural. Powerful.</span></button>
+        <button class="mood-btn" onclick="selectMood('Sensual',this)"><span class="mood-label">Sensual</span><span class="mood-sub">Fluid. Undone. Body-aware.</span></button>
+        <button class="mood-btn" onclick="selectMood('Romantic',this)"><span class="mood-label">Romantic</span><span class="mood-sub">Layered. Textured. Not precious.</span></button>
+        <button class="mood-btn" onclick="selectMood('Minimal',this)"><span class="mood-label">Minimal</span><span class="mood-sub">Quiet luxury. Nothing extra.</span></button>
+        <button class="mood-btn" onclick="selectMood('Creative',this)"><span class="mood-label">Creative</span><span class="mood-sub">Unexpected. One statement.</span></button>
+      </div>
+
+      <div style="margin-bottom:32px">
+        <div class="section-label">Context</div>
+        <textarea class="context-textarea" id="extra-context" rows="3" placeholder="Cold weather, dinner at 8, want to wear the boots..."></textarea>
+      </div>
+
+      <button class="btn-primary" id="compose-btn" onclick="composeLook()" disabled>Compose Look</button>
+    </div>
+
+    <!-- RESULT -->
+    <div id="stylist-result" style="display:none; animation: fadeUp 0.5s ease">
+      <div class="result-header">
+        <div class="section-label" id="result-label"></div>
+        <div class="result-title" id="result-headline"></div>
+        <div class="result-color" id="result-color"></div>
+      </div>
+      <div id="result-pieces"></div>
+      <div class="notes-box">
+        <div class="stylist-note" id="result-note"></div>
+        <div class="notes-grid">
+          <div><div class="notes-key">Lip</div><div class="notes-val" id="result-lip"></div></div>
+          <div><div class="notes-key">The Edge</div><div class="notes-val" id="result-edge"></div></div>
+        </div>
+      </div>
+      <div class="chat-box">
+        <div class="chat-header">Refine</div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" placeholder="Change the shoes. Make it warmer." onkeydown="if(event.key==='Enter') sendChat()">
+          <button class="chat-send" onclick="sendChat()">→</button>
+        </div>
+      </div>
+      <button class="btn-ghost" style="width:100%" onclick="resetStylist()">New Look</button>
+    </div>
+  </div>
+
+  <!-- WARDROBE TAB -->
+  <div id="tab-wardrobe" style="display:none; animation: fadeUp 0.4s ease">
+    <div class="wardrobe-subnav">
+      <button class="subnav-btn active" id="btn-gallery" onclick="switchWardrobe('gallery')">View Archive</button>
+      <button class="subnav-btn add" id="btn-upload" onclick="switchWardrobe('upload')">+ Add Outfits</button>
+    </div>
+
+    <!-- GALLERY -->
+    <div id="wardrobe-gallery">
+      <div class="filter-row" id="filter-row">
+        <button class="filter-btn active" onclick="filterBy('All',this)">All</button>
+        <button class="filter-btn" onclick="filterBy('Day',this)">Day</button>
+        <button class="filter-btn" onclick="filterBy('Work',this)">Work</button>
+        <button class="filter-btn" onclick="filterBy('Night Out',this)">Night Out</button>
+        <button class="filter-btn" onclick="filterBy('Event',this)">Event</button>
+      </div>
+      <div id="gallery-grid" class="gallery-grid"></div>
+      <div id="gallery-empty" class="empty-state">
+        <div class="empty-text">Your archive is empty.</div>
+        <button class="btn-ghost" onclick="switchWardrobe('upload')">Add Your First Look</button>
+      </div>
+      <div id="gallery-loading" class="loading-dot" style="text-align:center; padding:40px 0; display:none">Loading your archive...</div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div id="wardrobe-upload" style="display:none">
+      <div id="upload-feedback" style="display:none" class="feedback"></div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+
+      <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-title" id="upload-zone-title">Select Photos</div>
+        <div class="upload-sub" id="upload-zone-sub">You can select multiple at once from your camera roll</div>
+      </div>
+
+      <div id="queue-section" style="display:none">
+        <div class="queue-grid" id="queue-grid"></div>
+        <div class="section-label">Tag all as</div>
+        <div class="tag-grid">
+          <button class="tag-btn" onclick="selectTag('Day',this)" style="--tc:#3A3530">Day</button>
+          <button class="tag-btn" onclick="selectTag('Work',this)" style="--tc:#2E3F6F">Work</button>
+          <button class="tag-btn" onclick="selectTag('Night Out',this)" style="--tc:#5C2233">Night Out</button>
+          <button class="tag-btn" onclick="selectTag('Event',this)" style="--tc:#4A4A6A">Event</button>
+        </div>
+        <div style="font-size:10px; color:var(--text-dim); font-style:italic; margin-bottom:14px; text-align:center">
+          Save one batch, then add more with a different tag
+        </div>
+        <button class="btn-primary" id="save-btn" onclick="saveToArchive()" disabled>Select an occasion above</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────
+const SUPABASE_URL = 'https://yuxrzkqnyretndegkbip.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1eHJ6a3FueXJldG5kZWdrYmlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYwOTYsImV4cCI6MjA5NTIyMjA5Nn0.szoFwVC6qsxdehJuoHaNgz79wYw5gqkydoUskGRFYOY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const USER_PROFILE = `You are a personal stylist AI for a specific woman.
+PHYSICAL: Dark curly hair, neutral-cool olive skin, dark brown eyes, slim toned figure, always red nails.
+BEST COLORS: Deep Burgundy, Soft Burgundy, Navy, Royal Blue, Soft Teal, Slate Blue, Lavender Gray, Deep Plum, Cool Taupe, Dusty Rose, Black, White, Chocolate Brown, Caramel.
+AVOID: Orange, Rust, Bright Yellow, Warm Camel, Neons, Hot Pink.
+STYLE: Feminine-sensual, European, architectural, never precious. Wide-leg trousers, midi skirts, wrap skirts, mini with boots. Layered necklaces, hoop earrings, rings. Knee-high boots, strappy heels, bow heels. Trench coat is her hero. Animal print accessories as edgy accent. Camel structured bag. Bold colors anchored with black/navy.
+RULES: No emojis. Never girly or cute. Sensual = intentional fit and fabric, not revealing. Always suggest accessories. Lip color only (red nails are given).`;
+
+// ── STATE ──────────────────────────────────────────────────
+let selectedOccasion = null;
+let selectedMood = null;
+let selectedTag = null;
+let queue = [];
+let currentSuggestion = null;
+let chatHistory = [];
+let filterOccasion = 'All';
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-stylist').style.display = tab === 'stylist' ? 'block' : 'none';
+  document.getElementById('tab-wardrobe').style.display = tab === 'wardrobe' ? 'block' : 'none';
+  if (tab === 'wardrobe') loadGallery();
+  updateArchiveTab();
+}
+
+function updateArchiveTab() {
+  // count updated dynamically
+}
+
+// ── STYLIST ──────────────────────────────────────────────
+function selectOccasion(occ, sub, btn) {
+  selectedOccasion = occ;
+  document.querySelectorAll('.occasion-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  checkCompose();
+}
+
+function selectMood(mood, btn) {
+  selectedMood = mood;
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  checkCompose();
+}
+
+function checkCompose() {
+  const btn = document.getElementById('compose-btn');
+  btn.disabled = !(selectedOccasion && selectedMood);
+  btn.textContent = (selectedOccasion && selectedMood) ? 'Compose Look' : 'Compose Look';
+}
+
+async function composeLook() {
+  const extra = document.getElementById('extra-context').value;
+  document.getElementById('compose-btn').textContent = 'Composing your look...';
+  document.getElementById('compose-btn').disabled = true;
+
+  const prompt = `Create a complete outfit for:
+OCCASION: ${selectedOccasion}
+MOOD: ${selectedMood}
+${extra ? 'NOTES: ' + extra : ''}
+
+Respond ONLY in this exact JSON, no markdown, no emojis:
+{
+  "headline": "Short evocative outfit title, 3-5 words, poetic",
+  "pieces": [
+    {"item":"Item name","note":"Why it works"},
+    {"item":"Item name","note":"Why it works"},
+    {"item":"Item name","note":"Why it works"},
+    {"item":"Item name","note":"Why it works"},
+    {"item":"Item name","note":"Why it works"}
+  ],
+  "colorStory": "One sentence on the color palette",
+  "stylistNote": "2 sentences of personal styling direction. Warm but direct.",
+  "lipColor": "One specific lip color",
+  "edgyTwist": "One animal print or unexpected accessory"
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+        system: USER_PROFILE,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(i => i.text || '').join('');
+    currentSuggestion = JSON.parse(text.replace(/```json|```/g, '').trim());
+    showResult();
+  } catch(e) {
+    alert('Something went wrong. Please try again.');
+    document.getElementById('compose-btn').disabled = false;
+    document.getElementById('compose-btn').textContent = 'Compose Look';
+  }
+}
+
+function showResult() {
+  document.getElementById('stylist-form').style.display = 'none';
+  const r = document.getElementById('stylist-result');
+  r.style.display = 'block';
+  document.getElementById('result-label').textContent = selectedOccasion + ' — ' + selectedMood;
+  document.getElementById('result-headline').textContent = currentSuggestion.headline;
+  document.getElementById('result-color').textContent = currentSuggestion.colorStory;
+  document.getElementById('result-note').textContent = '"' + currentSuggestion.stylistNote + '"';
+  document.getElementById('result-lip').textContent = currentSuggestion.lipColor;
+  document.getElementById('result-edge').textContent = currentSuggestion.edgyTwist;
+  const piecesEl = document.getElementById('result-pieces');
+  piecesEl.innerHTML = currentSuggestion.pieces.map((p, i) => `
+    <div class="piece-row">
+      <div class="piece-line ${i === 0 ? 'first' : ''}"></div>
+      <div><div class="piece-name">${p.item}</div><div class="piece-note">${p.note}</div></div>
+    </div>`).join('');
+  chatHistory = [{ role: 'assistant', content: 'The look is ready. Ask me anything — swap a piece, adjust for weather, or push it further.' }];
+  renderChat();
+}
+
+function renderChat() {
+  const el = document.getElementById('chat-messages');
+  el.innerHTML = chatHistory.map(m => m.role === 'assistant'
+    ? `<div class="chat-msg-ai">${m.content}</div>`
+    : `<div class="chat-msg-user">${m.content}</div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  chatHistory.push({ role: 'user', content: msg });
+  renderChat();
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'loading-dot';
+  loadingDiv.textContent = '...';
+  document.getElementById('chat-messages').appendChild(loadingDiv);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        system: USER_PROFILE + '\n\nStyling chat. Direct, warm, no emojis. 2-4 sentences max. Current look: ' + JSON.stringify(currentSuggestion),
+        messages: chatHistory
+      })
+    });
+    const data = await res.json();
+    const reply = data.content.map(i => i.text || '').join('');
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    chatHistory.push({ role: 'assistant', content: 'Something went wrong. Try again.' });
+  }
+  renderChat();
+}
+
+function resetStylist() {
+  selectedOccasion = null; selectedMood = null; currentSuggestion = null; chatHistory = [];
+  document.querySelectorAll('.occasion-btn, .mood-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('extra-context').value = '';
+  document.getElementById('stylist-form').style.display = 'block';
+  document.getElementById('stylist-result').style.display = 'none';
+  document.getElementById('compose-btn').disabled = true;
+  document.getElementById('compose-btn').textContent = 'Compose Look';
+}
+
+// ── WARDROBE ──────────────────────────────────────────────
+function switchWardrobe(view) {
+  document.getElementById('wardrobe-gallery').style.display = view === 'gallery' ? 'block' : 'none';
+  document.getElementById('wardrobe-upload').style.display = view === 'upload' ? 'block' : 'none';
+  document.getElementById('btn-gallery').classList.toggle('active', view === 'gallery');
+  document.getElementById('btn-upload').classList.toggle('active', view === 'upload');
+  if (view === 'gallery') loadGallery();
+}
+
+// ── UPLOAD ────────────────────────────────────────────────
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      queue.push({ img: e.target.result, file: file, id: Date.now() + Math.random() });
+      renderQueue();
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('file-input').value = '';
+}
+
+function renderQueue() {
+  const grid = document.getElementById('queue-grid');
+  const section = document.getElementById('queue-section');
+  const zoneTitle = document.getElementById('upload-zone-title');
+  const zoneSub = document.getElementById('upload-zone-sub');
+  if (queue.length === 0) {
+    section.style.display = 'none';
+    zoneTitle.textContent = 'Select Photos';
+    zoneSub.textContent = 'You can select multiple at once from your camera roll';
+    return;
+  }
+  section.style.display = 'block';
+  zoneTitle.textContent = '+ Add More Photos';
+  zoneSub.textContent = queue.length + ' selected';
+  grid.innerHTML = queue.map(q => `
+    <div class="queue-item">
+      <img class="queue-img" src="${q.img}">
+      <button class="queue-remove" onclick="removeFromQueue(${q.id})">✕</button>
+    </div>`).join('');
+  updateSaveBtn();
+}
+
+function removeFromQueue(id) {
+  queue = queue.filter(q => q.id !== id);
+  renderQueue();
+}
+
+function selectTag(tag, btn) {
+  selectedTag = tag;
+  const colors = { Day: '#3A3530', Work: '#2E3F6F', 'Night Out': '#5C2233', Event: '#4A4A6A' };
+  document.querySelectorAll('.tag-btn').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--text-mid)';
+  });
+  btn.style.background = colors[tag];
+  btn.style.borderColor = colors[tag];
+  btn.style.color = '#F0E8E0';
+  updateSaveBtn();
+}
+
+function updateSaveBtn() {
+  const btn = document.getElementById('save-btn');
+  if (selectedTag && queue.length > 0) {
+    btn.disabled = false;
+    btn.textContent = `Save ${queue.length} ${queue.length === 1 ? 'Look' : 'Looks'} to Archive`;
+  } else if (!selectedTag) {
+    btn.disabled = true;
+    btn.textContent = 'Select an occasion above';
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Add photos first';
+  }
+}
+
+async function saveToArchive() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  let saved = 0;
+  for (const item of queue) {
+    try {
+      // Upload image to Supabase Storage
+      const fileName = `outfit_${Date.now()}_${Math.random().toString(36).substr(2,9)}.jpg`;
+      const blob = await fetch(item.img).then(r => r.blob());
+      const { data: uploadData, error: uploadError } = await sb.storage
+        .from('outfits')
+        .upload(fileName, blob, { contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = sb.storage.from('outfits').getPublicUrl(fileName);
+      // Save to database
+      const { error: dbError } = await sb.from('outfits').insert({
+        occasion: selectedTag,
+        image_url: urlData.publicUrl,
+        description: ''
+      });
+      if (dbError) throw dbError;
+      saved++;
+    } catch(e) {
+      console.error('Error saving item:', e);
+    }
+  }
+  // Show feedback
+  const fb = document.getElementById('upload-feedback');
+  fb.textContent = `${saved} ${saved === 1 ? 'look' : 'looks'} saved to your archive.`;
+  fb.style.display = 'block';
+  setTimeout(() => fb.style.display = 'none', 3000);
+  // Reset
+  queue = [];
+  selectedTag = null;
+  document.querySelectorAll('.tag-btn').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--text-mid)';
+  });
+  renderQueue();
+}
+
+// ── GALLERY ───────────────────────────────────────────────
+async function loadGallery() {
+  document.getElementById('gallery-loading').style.display = 'block';
+  document.getElementById('gallery-grid').style.display = 'none';
+  document.getElementById('gallery-empty').style.display = 'none';
+  try {
+    let query = sb.from('outfits').select('*').order('created_at', { ascending: false });
+    if (filterOccasion !== 'All') query = query.eq('occasion', filterOccasion);
+    const { data, error } = await query;
+    if (error) throw error;
+    document.getElementById('gallery-loading').style.display = 'none';
+    if (!data || data.length === 0) {
+      document.getElementById('gallery-empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('gallery-grid').style.display = 'grid';
+    const colors = { Day: '#3A3530', Work: '#2E3F6F', 'Night Out': '#5C2233', Event: '#4A4A6A' };
+    document.getElementById('gallery-grid').innerHTML = data.map(item => `
+      <div class="gallery-item">
+        <div class="gallery-img-wrap">
+          <img class="gallery-img" src="${item.image_url}" loading="lazy">
+          <div class="gallery-tag" style="background:${colors[item.occasion] || '#3A3530'}">
+            <span>${item.occasion}</span>
+          </div>
+        </div>
+      </div>`).join('');
+    // Update archive tab count
+    document.getElementById('archive-tab').textContent = `My Archive — ${data.length}`;
+  } catch(e) {
+    document.getElementById('gallery-loading').style.display = 'none';
+    document.getElementById('gallery-empty').style.display = 'block';
+    console.error(e);
+  }
+}
+
+function filterBy(occ, btn) {
+  filterOccasion = occ;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadGallery();
+}
+</script>
+</body>
+</html>
