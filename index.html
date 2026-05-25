@@ -380,6 +380,7 @@ function submitPin() {
 }
 
 // ── SUPABASE ──────────────────────────────────────────────
+const API_URL = '/api/chat';
 const SUPABASE_URL = 'https://yuxrzkqnyretndegkbip.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1eHJ6a3FueXJldG5kZWdrYmlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NDYwOTYsImV4cCI6MjA5NTIyMjA5Nn0.szoFwVC6qsxdehJuoHaNgz79wYw5gqkydoUskGRFYOY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -453,7 +454,7 @@ Respond ONLY in this exact JSON, no markdown:
 {"headline":"Short evocative title 3-5 words","wardrobeRefs":["Reference to specific wardrobe item if applicable"],"pieces":[{"item":"Item name","note":"Why it works"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"}],"colorStory":"One sentence","stylistNote":"2 sentences warm but direct","lipColor":"One specific lip","edgyTwist":"One unexpected accessory"}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:USER_PROFILE,
         messages:[{role:'user', content:prompt}] })
@@ -504,7 +505,7 @@ async function sendChat() {
   chatHistory.push({role:'user',content:msg});
   renderChat();
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch('/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,
         system:USER_PROFILE+'\n\nStyling chat. Direct, warm, no emojis. 2-4 sentences. Current look: '+JSON.stringify(currentSuggestion),
@@ -592,7 +593,7 @@ async function compressImage(dataUrl,maxWidth=800) {
 async function detectVibeAndDescription(imageData) {
   try {
     const b64 = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100,
         system:'You are a fashion analyst. Respond ONLY in JSON: {"vibe":"one of Bold/Sensual/Romantic/Minimal/Creative","description":"brief outfit description max 10 words e.g. black wide-leg trousers white silk cami camel bag"}',
