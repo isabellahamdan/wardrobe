@@ -318,6 +318,11 @@
         </div>
         <div id="queue-section" style="display:none">
           <div class="queue-grid" id="queue-grid"></div>
+          <div class="section-label">Photo Type</div>
+          <div class="tag-grid" style="margin-bottom:20px">
+            <button class="tag-btn" onclick="selectUploadTag('photo_type','Full Outfit',this)">Full Outfit</button>
+            <button class="tag-btn" onclick="selectUploadTag('photo_type','Individual Piece',this)">Individual Piece</button>
+          </div>
           <div class="section-label">Occasion</div>
           <div class="tag-grid" style="margin-bottom:20px">
             <button class="tag-btn" onclick="selectUploadTag('occasion','Day',this)">Day</button>
@@ -394,7 +399,7 @@ RULES: No emojis. Never girly or cute. Sensual means intentional fit and fabric.
 
 // ── STATE ─────────────────────────────────────────────────
 let selectedOccasion=null, selectedMood=null, selectedWeatherStyle=null;
-let selectedOccasionTag=null, selectedWeatherTag=null;
+let selectedOccasionTag=null, selectedWeatherTag=null, selectedPhotoType=null;
 let queue=[], currentSuggestion=null, chatHistory=[];
 let filterOccasion='All', filterWeather='All', filterVibe='All';
 
@@ -418,29 +423,26 @@ async function composeLook() {
   const btn = document.getElementById('compose-btn');
   btn.textContent='Looking through your wardrobe...'; btn.disabled=true;
 
-  // Fetch relevant outfits from archive
-  let {data:outfits} = await sb.from('outfits').select('id,occasion,weather,vibe,description')
-    .eq('occasion', selectedOccasion)
-    .eq('weather', selectedWeatherStyle)
-    .limit(15);
-
-  // Fallback: relax weather filter if not enough
+  // Fetch relevant outfits with images
+  let {data:outfits} = await sb.from('outfits').select('id,occasion,weather,vibe,description,photo_type,image_data,image_url')
+    .eq('occasion', selectedOccasion).eq('weather', selectedWeatherStyle).limit(15);
   if(!outfits || outfits.length < 3) {
-    const {data:fallback} = await sb.from('outfits').select('id,occasion,weather,vibe,description')
+    const {data:fallback} = await sb.from('outfits').select('id,occasion,weather,vibe,description,photo_type,image_data,image_url')
       .eq('occasion', selectedOccasion).limit(15);
     outfits = fallback || [];
   }
-
-  // Further fallback: any outfits
   if(!outfits || outfits.length < 3) {
-    const {data:any} = await sb.from('outfits').select('id,occasion,weather,vibe,description').limit(15);
+    const {data:any} = await sb.from('outfits').select('id,occasion,weather,vibe,description,photo_type,image_data,image_url').limit(15);
     outfits = any || [];
   }
 
+  // Store outfits for photo display
+  window._lastOutfits = outfits || [];
+
   const wardrobeContext = outfits && outfits.length > 0
-    ? `\n\nHer wardrobe archive (${outfits.length} relevant outfits):\n` +
-      outfits.map((o,i) => `${i+1}. [${o.occasion}/${o.weather||'?'}/${o.vibe||'?'}] ${o.description||'Outfit photo'}`).join('\n')
-    : '\n\nNo wardrobe archive yet — suggest based on her style profile.';
+    ? `\n\nHer wardrobe archive (${outfits.length} items):\n` +
+      outfits.map((o,i) => `${i+1}. [ID:${o.id}] [${o.photo_type||'Full Outfit'}] [${o.occasion}/${o.weather||'?'}/${o.vibe||'?'}] ${o.description||'Outfit photo'}`).join('\n')
+    : '\n\nNo wardrobe archive yet.';
 
   const prompt = `Create a complete outfit suggestion for:
 OCCASION: ${selectedOccasion}
@@ -449,9 +451,9 @@ MOOD/VIBE: ${selectedMood}
 ${extra ? 'EXTRA NOTES: '+extra : ''}
 ${wardrobeContext}
 
-Reference specific items from her wardrobe list above if relevant.
+IMPORTANT: When referencing wardrobe items, include their exact ID from the list above in the wardrobePhotoIds array.
 Respond ONLY in this exact JSON, no markdown:
-{"headline":"Short evocative title 3-5 words","wardrobeRefs":["Reference to specific wardrobe item if applicable"],"pieces":[{"item":"Item name","note":"Why it works"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"}],"colorStory":"One sentence","stylistNote":"2 sentences warm but direct","lipColor":"One specific lip","edgyTwist":"One unexpected accessory"}`;
+{"headline":"Short evocative title 3-5 words","wardrobePhotoIds":["id1","id2","id3"],"wardrobeRefs":["Description of piece from wardrobe item"],"pieces":[{"item":"Item name","note":"Why it works"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"}],"colorStory":"One sentence","stylistNote":"2 sentences warm but direct","lipColor":"One specific lip","edgyTwist":"One unexpected accessory"}`;
 
   try {
     const res = await fetch('/api/chat', {
@@ -461,7 +463,7 @@ Respond ONLY in this exact JSON, no markdown:
     });
     const data = await res.json();
     if(!res.ok) throw new Error(data.error || JSON.stringify(data));
-    if(!data.content) throw new Error('No content in response: ' + JSON.stringify(data));
+    if(!data.content) throw new Error('No content: ' + JSON.stringify(data));
     currentSuggestion = JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim());
     showResult();
   } catch(e) {
@@ -481,11 +483,36 @@ function showResult() {
   document.getElementById('result-lip').textContent = currentSuggestion.lipColor;
   document.getElementById('result-edge').textContent = currentSuggestion.edgyTwist;
 
-  // Wardrobe references
+  // Show wardrobe photos
+  const photoIds = currentSuggestion.wardrobePhotoIds || [];
   const refs = currentSuggestion.wardrobeRefs || [];
-  document.getElementById('result-wardrobe-refs').innerHTML = refs.length > 0
-    ? `<div style="margin-bottom:16px"><div class="section-label" style="margin-bottom:8px">From your wardrobe</div>${refs.map(r=>`<div class="outfit-ref">${r}</div>`).join('')}</div>`
-    : '';
+  const allOutfits = window._lastOutfits || [];
+  const matchedPhotos = photoIds.map(id => allOutfits.find(o => o.id === id)).filter(Boolean);
+
+  let wardrobeHtml = '';
+  if(matchedPhotos.length > 0) {
+    wardrobeHtml += `<div style="margin-bottom:24px">
+      <div class="section-label" style="margin-bottom:12px">From your wardrobe</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        ${matchedPhotos.map(o => `
+          <div style="position:relative;border-radius:3px;overflow:hidden;border:1px solid var(--border)">
+            <img src="${o.image_data||o.image_url}" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block">
+            <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);padding:4px 6px">
+              <span style="font-size:9px;color:#fff;font-family:inherit;letter-spacing:0.1em">${o.description||o.occasion}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if(refs.length > 0) {
+    wardrobeHtml += `<div style="margin-bottom:20px">
+      ${matchedPhotos.length > 0 ? '' : '<div class="section-label" style="margin-bottom:8px">Referenced pieces</div>'}
+      ${refs.map(r=>`<div class="outfit-ref">${r}</div>`).join('')}
+    </div>`;
+  }
+
+  document.getElementById('result-wardrobe-refs').innerHTML = wardrobeHtml;
 
   document.getElementById('result-pieces').innerHTML = currentSuggestion.pieces.map((p,i)=>
     `<div class="piece-row"><div class="piece-line ${i===0?'first':''}"></div><div><div class="piece-name">${p.item}</div><div class="piece-note">${p.note}</div></div></div>`).join('');
@@ -568,7 +595,9 @@ function selectUploadTag(type,value,btn) {
   const colors=type==='occasion'?occColors:wxColors;
   document.querySelectorAll(`.tag-btn`).forEach(b=>{ if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(`'${type}'`)){b.style.background='';b.style.borderColor='';b.style.color='';} });
   btn.style.background=colors[value];btn.style.borderColor=colors[value];btn.style.color='#FFF';
-  if(type==='occasion') selectedOccasionTag=value; else selectedWeatherTag=value;
+  if(type==='occasion') selectedOccasionTag=value;
+  else if(type==='weather') selectedWeatherTag=value;
+  else if(type==='photo_type') selectedPhotoType=value;
   updateSaveBtn();
 }
 
@@ -623,6 +652,7 @@ async function saveToArchive() {
       const {vibe, description} = await detectVibeAndDescription(compressed);
       const {error} = await sb.from('outfits').insert({
         occasion:selectedOccasionTag, weather:selectedWeatherTag,
+        photo_type:selectedPhotoType||'Full Outfit',
         vibe, description, analyzed:true,
         image_url:'', image_data:compressed
       });
@@ -634,7 +664,7 @@ async function saveToArchive() {
   if(saved>0){fb.textContent=`${saved} ${saved===1?'look':'looks'} saved and analysed.`;fb.className='feedback success';}
   else{fb.textContent=`Error: ${lastError?lastError.message||JSON.stringify(lastError):'Unknown'}`;fb.className='feedback error';}
   fb.style.display='block'; setTimeout(()=>fb.style.display='none',5000);
-  queue=[];selectedOccasionTag=null;selectedWeatherTag=null;
+  queue=[];selectedOccasionTag=null;selectedWeatherTag=null;selectedPhotoType=null;
   document.querySelectorAll('.tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
   renderQueue();
   btn.textContent=saved>0?'Saved!':'Try again';
