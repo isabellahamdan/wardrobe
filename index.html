@@ -554,18 +554,19 @@ async function saveToArchive() {
   const btn = document.getElementById('save-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
   let saved = 0;
+  let lastError = null;
   for (const item of queue) {
     try {
       const compressed = await compressImage(item.img);
-      const { error } = await sb.from('outfits').insert({
+      const { data, error } = await sb.from('outfits').insert({
         occasion: selectedTag,
         image_url: '',
         image_data: compressed,
         description: ''
-      });
-      if (error) throw error;
+      }).select();
+      if (error) { lastError = error; throw error; }
       saved++;
-    } catch(e) { console.error('Save error:', e); }
+    } catch(e) { lastError = e; console.error('Save error:', e); }
   }
   const fb = document.getElementById('upload-feedback');
   if (saved > 0) {
@@ -574,13 +575,14 @@ async function saveToArchive() {
     fb.style.borderColor = '#6a9e6a';
     fb.style.color = '#3a7a3a';
   } else {
-    fb.textContent = 'Something went wrong. Please try again.';
+    const errMsg = lastError ? (lastError.message || lastError.code || JSON.stringify(lastError)) : 'Unknown error';
+    fb.textContent = `Error: ${errMsg}`;
     fb.style.background = '#FFF0F0';
     fb.style.borderColor = '#c0392b';
     fb.style.color = '#c0392b';
   }
   fb.style.display = 'block';
-  setTimeout(() => fb.style.display = 'none', 3000);
+  setTimeout(() => fb.style.display = 'none', 6000);
   queue = []; selectedTag = null;
   document.querySelectorAll('.tag-btn').forEach(b => { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; });
   renderQueue();
