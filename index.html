@@ -158,6 +158,12 @@
   .gallery-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
   .gallery-tag { position: absolute; top: 6px; left: 6px; padding: 3px 8px; border-radius: 2px; }
   .gallery-tag span { font-size: 8px; letter-spacing: 0.2em; color: #FFF; text-transform: uppercase; font-weight: 700; }
+  .delete-btn { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+    border-radius: 50%; background: rgba(0,0,0,0.6); border: none; color: #fff;
+    font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; opacity: 0; transition: opacity 0.2s; }
+  .gallery-item:hover .delete-btn { opacity: 1; }
+  .gallery-img-wrap:active .delete-btn { opacity: 1; }
 
   /* MISC */
   .feedback { background: #F0FFF0; border: 2px solid #6a9e6a; border-radius: 3px;
@@ -605,8 +611,31 @@ async function loadGallery() {
     document.getElementById('archive-tab').textContent = `My Archive — ${data.length}`;
     const colors = { Day: '#3A3530', Work: '#2E3F6F', 'Night Out': '#6B2D3E', Event: '#4A4A6A' };
     document.getElementById('gallery-grid').innerHTML = data.map(item =>
-      `<div class="gallery-item"><div class="gallery-img-wrap"><img class="gallery-img" src="${item.image_data || item.image_url}" loading="lazy"><div class="gallery-tag" style="background:${colors[item.occasion]||'#3A3530'}"><span>${item.occasion}</span></div></div></div>`).join('');
+      `<div class="gallery-item" id="item-${item.id}">
+        <div class="gallery-img-wrap">
+          <img class="gallery-img" src="${item.image_data || item.image_url}" loading="lazy"
+            onerror="this.style.display='none'">
+          <div class="gallery-tag" style="background:${colors[item.occasion]||'#3A3530'}">
+            <span>${item.occasion}</span>
+          </div>
+          <button class="delete-btn" onclick="deleteItem('${item.id}')">✕</button>
+        </div>
+      </div>`).join('');
   } catch(e) { document.getElementById('gallery-loading').style.display = 'none'; document.getElementById('gallery-empty').style.display = 'block'; }
+}
+
+async function deleteItem(id) {
+  if (!confirm('Remove this look from your archive?')) return;
+  const { error } = await sb.from('outfits').delete().eq('id', id);
+  if (!error) {
+    const el = document.getElementById('item-' + id);
+    if (el) el.remove();
+    // update count
+    const grid = document.getElementById('gallery-grid');
+    const remaining = grid.children.length;
+    document.getElementById('archive-tab').textContent = remaining > 0 ? `My Archive — ${remaining}` : 'My Archive';
+    if (remaining === 0) { grid.style.display = 'none'; document.getElementById('gallery-empty').style.display = 'block'; }
+  }
 }
 
 function filterBy(occ, btn) {
