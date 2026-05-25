@@ -462,7 +462,8 @@ Respond ONLY in this exact JSON, no markdown:
     currentSuggestion = JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim());
     showResult();
   } catch(e) {
-    alert('Something went wrong. Please try again.');
+    const errMsg = e && e.message ? e.message : JSON.stringify(e);
+    document.getElementById('stylist-form').innerHTML += `<div class="feedback error" style="margin-top:16px">Error: ${errMsg}</div>`;
     btn.disabled=false; btn.textContent='Style Me from My Wardrobe';
   }
 }
