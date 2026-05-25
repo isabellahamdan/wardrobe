@@ -460,6 +460,8 @@ Respond ONLY in this exact JSON, no markdown:
         messages:[{role:'user', content:prompt}] })
     });
     const data = await res.json();
+    if(!res.ok) throw new Error(data.error || JSON.stringify(data));
+    if(!data.content) throw new Error('No content in response: ' + JSON.stringify(data));
     currentSuggestion = JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim());
     showResult();
   } catch(e) {
