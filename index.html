@@ -418,49 +418,45 @@ async function composeLook() {
   btn.textContent='Looking through your wardrobe...'; btn.disabled=true;
 
   // Fetch relevant outfits from archive
-  let query = sb.from('outfits').select('id,occasion,weather,vibe,image_data,image_url,description')
+  let {data:outfits} = await sb.from('outfits').select('id,occasion,weather,vibe,description')
     .eq('occasion', selectedOccasion)
     .eq('weather', selectedWeatherStyle)
-    .limit(12);
-  if(selectedMood && selectedMood !== 'All') query = query.eq('vibe', selectedMood);
-  let { data: outfits } = await query;
+    .limit(15);
 
-  // Fallback: if not enough, relax vibe filter
+  // Fallback: relax weather filter if not enough
   if(!outfits || outfits.length < 3) {
-    const { data: fallback } = await sb.from('outfits').select('id,occasion,weather,vibe,image_data,image_url,description')
-      .eq('occasion', selectedOccasion).limit(12);
+    const {data:fallback} = await sb.from('outfits').select('id,occasion,weather,vibe,description')
+      .eq('occasion', selectedOccasion).limit(15);
     outfits = fallback || [];
   }
 
-  const hasWardrobe = outfits && outfits.length > 0;
-
-  // Build messages with images if available
-  const userContent = [];
-  if(hasWardrobe) {
-    userContent.push({ type:'text', text:`Here are ${outfits.length} outfits from Isabella's wardrobe archive tagged as ${selectedOccasion} / ${selectedWeatherStyle}:` });
-    for(const o of outfits.slice(0,8)) {
-      const imgSrc = o.image_data || o.image_url;
-      if(imgSrc && imgSrc.length > 50) {
-        const b64 = imgSrc.startsWith('data:') ? imgSrc.split(',')[1] : null;
-        if(b64) userContent.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } });
-      }
-    }
+  // Further fallback: any outfits
+  if(!outfits || outfits.length < 3) {
+    const {data:any} = await sb.from('outfits').select('id,occasion,weather,vibe,description').limit(15);
+    outfits = any || [];
   }
 
-  userContent.push({ type:'text', text:`Create a complete outfit suggestion for:
+  const wardrobeContext = outfits && outfits.length > 0
+    ? `\n\nHer wardrobe archive (${outfits.length} relevant outfits):\n` +
+      outfits.map((o,i) => `${i+1}. [${o.occasion}/${o.weather||'?'}/${o.vibe||'?'}] ${o.description||'Outfit photo'}`).join('\n')
+    : '\n\nNo wardrobe archive yet — suggest based on her style profile.';
+
+  const prompt = `Create a complete outfit suggestion for:
 OCCASION: ${selectedOccasion}
 WEATHER: ${selectedWeatherStyle}
 MOOD/VIBE: ${selectedMood}
 ${extra ? 'EXTRA NOTES: '+extra : ''}
-${hasWardrobe ? 'Reference specific pieces you can see in the wardrobe photos above. Describe them precisely so Isabella can identify them.' : 'No wardrobe photos available yet — give general suggestions based on her style profile.'}
+${wardrobeContext}
 
-Respond ONLY in this exact JSON:
-{"headline":"Short evocative title 3-5 words","wardrobeRefs":["Brief description of specific piece from photos, or empty array if none"],"pieces":[{"item":"Item name","note":"Why it works"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"}],"colorStory":"One sentence","stylistNote":"2 sentences warm but direct","lipColor":"One specific lip","edgyTwist":"One unexpected accessory"}` });
+Reference specific items from her wardrobe list above if relevant.
+Respond ONLY in this exact JSON, no markdown:
+{"headline":"Short evocative title 3-5 words","wardrobeRefs":["Reference to specific wardrobe item if applicable"],"pieces":[{"item":"Item name","note":"Why it works"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"},{"item":"Item","note":"Why"}],"colorStory":"One sentence","stylistNote":"2 sentences warm but direct","lipColor":"One specific lip","edgyTwist":"One unexpected accessory"}`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200, system:USER_PROFILE, messages:[{ role:'user', content:userContent }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:USER_PROFILE,
+        messages:[{role:'user', content:prompt}] })
     });
     const data = await res.json();
     currentSuggestion = JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim());
@@ -592,23 +588,25 @@ async function compressImage(dataUrl,maxWidth=800) {
   });
 }
 
-async function detectVibe(imageData) {
+async function detectVibeAndDescription(imageData) {
   try {
-    const b64=imageData.startsWith('data:')?imageData.split(',')[1]:imageData;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:50,
-        system:'You are a fashion analyst. Respond with ONLY one word from this list: Bold, Sensual, Romantic, Minimal, Creative',
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-          {type:'text',text:'What is the vibe of this outfit? Reply with exactly one word: Bold, Sensual, Romantic, Minimal, or Creative.'}
-        ]}]})
+    const b64 = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100,
+        system:'You are a fashion analyst. Respond ONLY in JSON: {"vibe":"one of Bold/Sensual/Romantic/Minimal/Creative","description":"brief outfit description max 10 words e.g. black wide-leg trousers white silk cami camel bag"}',
+        messages:[{role:'user', content:[
+          {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
+          {type:'text', text:'Analyse this outfit. Return JSON only.'}
+        ]}]
+      })
     });
-    const data=await res.json();
-    const vibe=data.content.map(i=>i.text||'').join('').trim();
-    const valid=['Bold','Sensual','Romantic','Minimal','Creative'];
-    return valid.find(v=>vibe.includes(v)) || 'Minimal';
-  } catch(e) { return 'Minimal'; }
+    const data = await res.json();
+    const text = data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(text);
+    const valid = ['Bold','Sensual','Romantic','Minimal','Creative'];
+    return { vibe: valid.find(v=>parsed.vibe&&parsed.vibe.includes(v))||'Minimal', description: parsed.description||'' };
+  } catch(e) { return { vibe:'Minimal', description:'' }; }
 }
 
 async function saveToArchive() {
@@ -617,12 +615,12 @@ async function saveToArchive() {
   let saved=0; let lastError=null;
   for(const item of queue) {
     try {
-      const compressed=await compressImage(item.img);
-      const vibe=await detectVibe(compressed);
-      const {error}=await sb.from('outfits').insert({
+      const compressed = await compressImage(item.img);
+      const {vibe, description} = await detectVibeAndDescription(compressed);
+      const {error} = await sb.from('outfits').insert({
         occasion:selectedOccasionTag, weather:selectedWeatherTag,
-        vibe:vibe, analyzed:true,
-        image_url:'', image_data:compressed, description:''
+        vibe, description, analyzed:true,
+        image_url:'', image_data:compressed
       });
       if(error){lastError=error;throw error;}
       saved++;
@@ -661,8 +659,8 @@ async function analyseAll() {
   for(const outfit of unanalysed) {
     const imgSrc=outfit.image_data||outfit.image_url;
     if(!imgSrc||imgSrc.length<50){done++;continue;}
-    const vibe=await detectVibe(imgSrc);
-    await sb.from('outfits').update({vibe,analyzed:true}).eq('id',outfit.id);
+    const {vibe, description} = await detectVibeAndDescription(imgSrc);
+    await sb.from('outfits').update({vibe, description, analyzed:true}).eq('id',outfit.id);
     done++;
     const pct=Math.round((done/total)*100);
     document.getElementById('analyse-progress-bar').style.width=pct+'%';
