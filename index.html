@@ -456,7 +456,7 @@ Respond ONLY in this exact JSON, no markdown:
   try {
     const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:USER_PROFILE,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1000, system:USER_PROFILE,
         messages:[{role:'user', content:prompt}] })
     });
     const data = await res.json();
@@ -509,7 +509,7 @@ async function sendChat() {
   try {
     const res=await fetch('/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,
         system:USER_PROFILE+'\n\nStyling chat. Direct, warm, no emojis. 2-4 sentences. Current look: '+JSON.stringify(currentSuggestion),
         messages:chatHistory})
     });
@@ -597,7 +597,7 @@ async function detectVibeAndDescription(imageData) {
     const b64 = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
     const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:100,
         system:'You are a fashion analyst. Respond ONLY in JSON: {"vibe":"one of Bold/Sensual/Romantic/Minimal/Creative","description":"brief outfit description max 10 words e.g. black wide-leg trousers white silk cami camel bag"}',
         messages:[{role:'user', content:[
           {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
