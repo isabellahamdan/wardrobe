@@ -50,7 +50,7 @@
   .tab { padding:10px 16px 12px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-size:12px; letter-spacing:0.15em; text-transform:uppercase; font-weight:600; cursor:pointer; transition:all 0.2s; margin-bottom:-2px; white-space:nowrap; }
   .tab.active { color:var(--text); border-bottom-color:var(--burgundy); }
   .main { max-width:580px; margin:0 auto; padding:28px 24px 100px; }
-  .section-label { font-size:11px; letter-spacing:0.38em; color:var(--text-dim); text-transform:uppercase; margin-bottom:14px; font-weight:600; }
+  .section-label { font-size:11px; letter-spacing:0.38em; color:#666; text-transform:uppercase; margin-bottom:14px; font-weight:700; }
 
   /* BUTTONS */
   .btn-primary { background:var(--burgundy); border:2px solid var(--burgundy); color:#FFF; padding:16px; width:100%; font-size:12px; letter-spacing:0.3em; text-transform:uppercase; border-radius:0; transition:all 0.2s; font-weight:700; }
@@ -233,10 +233,10 @@
         <div style="margin-bottom:28px">
           <div class="section-label">Where are you going?</div>
           <div class="occasion-grid">
-            <button class="occasion-btn" onclick="selectOccasion('Day',this)"><div class="occ-label">Day</div><div class="occ-sub">Casual, weekend</div></button>
-            <button class="occasion-btn" onclick="selectOccasion('Work',this)"><div class="occ-label">Work</div><div class="occ-sub">Professional</div></button>
-            <button class="occasion-btn" onclick="selectOccasion('Night Out',this)"><div class="occ-label">Night Out</div><div class="occ-sub">Dinner, drinks</div></button>
-            <button class="occasion-btn" onclick="selectOccasion('Event',this)"><div class="occ-label">Event</div><div class="occ-sub">Party, special</div></button>
+            <button class="occasion-btn" onclick="selectOccasion('Day',this)"><span class="occ-label">Day</span><span class="occ-sub">Casual, weekend</span></button>
+            <button class="occasion-btn" onclick="selectOccasion('Work',this)"><span class="occ-label">Work</span><span class="occ-sub">Professional</span></button>
+            <button class="occasion-btn" onclick="selectOccasion('Night Out',this)"><span class="occ-label">Night Out</span><span class="occ-sub">Dinner, drinks</span></button>
+            <button class="occasion-btn" onclick="selectOccasion('Event',this)"><span class="occ-label">Event</span><span class="occ-sub">Party, special</span></button>
           </div>
         </div>
         <div style="margin-bottom:28px">
