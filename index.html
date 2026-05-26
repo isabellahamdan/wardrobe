@@ -443,10 +443,28 @@ function submitPin(){
   if(pinEntry===CORRECT_PIN){
     document.getElementById('lock-screen').style.display='none';
     document.getElementById('app').style.display='block';
-    checkSharedContent();
-    // Check URL params
+    // Check if opened via share shortcut
     const params=new URLSearchParams(window.location.search);
-    if(params.get('tab')==='inspiration') switchTab('inspiration', document.querySelector('.tab:nth-child(3)'));
+    if(params.get('shared')==='1'){
+      const sharedUrl=params.get('url')||'';
+      // Switch to inspiration tab
+      const inspoTab=document.querySelectorAll('.tab')[2];
+      switchTab('inspiration',inspoTab);
+      switchInspo('add');
+      // Pre-fill the URL and select text type
+      setTimeout(()=>{
+        selectInspoType('text',document.getElementById('inspo-type-text'));
+        if(sharedUrl){
+          document.getElementById('inspo-url-input').value=decodeURIComponent(sharedUrl);
+          document.getElementById('inspo-text-input').placeholder='Add a note about this (optional)...';
+        }
+        // Show banner
+        const banner=document.getElementById('shared-banner');
+        banner.textContent='Shared from Instagram/TikTok — add a note and save!';
+        banner.style.display='block';
+        document.getElementById('inspo-save-btn').disabled=false;
+      },300);
+    }
   } else {
     const err=document.getElementById('pin-error'); err.classList.add('show');
     document.querySelector('.pin-dots').style.animation='shake 0.3s ease';
