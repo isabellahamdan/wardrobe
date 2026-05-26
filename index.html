@@ -1105,83 +1105,134 @@ function handleInspoFiles(files){
 }
 async function saveInspiration(){
   const btn=document.getElementById('inspo-save-btn');
-  btn.disabled=true;btn.textContent='Saving...';
+  const fb=document.getElementById('inspo-feedback');
+  btn.disabled=true; btn.textContent='Saving...';
+  fb.style.display='none';
+
   const url=document.getElementById('inspo-url-input').value.trim();
-  let saved=0;
-  if(inspoType==='text'){
-    const text=document.getElementById('inspo-text-input').value.trim();
-    if(!text){btn.disabled=false;btn.textContent='Save Inspiration';return;}
-    let aiSummary='';
-    try{
-      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:80,
-          system:'Extract the key style tip in English in max 15 words.',
-          messages:[{role:'user',content:'Extract key style tip: '+text}]})});
-      const data=await res.json();
-      aiSummary=data.content.map(i=>i.text||'').join('').trim();
-    }catch(e){}
-    const inspoTitle=document.getElementById('inspo-title-input').value.trim();
-    const {error}=await sb.from('inspiration').insert({type:'text',title:inspoTitle||text.slice(0,40),text_content:text,source_url:url,ai_summary:aiSummary});
-    if(!error)saved++;
-  } else if(inspoType==='photo'&&inspoQueue.length>0){
-    for(const item of inspoQueue){
-      const compressed=await compressImage(item.img,600);
+  const inspoTitle=document.getElementById('inspo-title-input').value.trim();
+  let saved=0, lastError=null;
+
+  try{
+    if(inspoType==='text'){
+      const text=document.getElementById('inspo-text-input').value.trim();
+      if(!text && !url){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
+
+      // AI summary — fail gracefully
       let aiSummary='';
       try{
-        const b64=compressed.split(',')[1];
         const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:60,
-            system:'Extract the key style lesson from this fashion image in max 12 words in English.',
-            messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Key style lesson?'}]}]})});
-        const data=await res.json();
-        aiSummary=data.content.map(i=>i.text||'').join('').trim();
+          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:80,
+            system:'Extract the key style tip in English in max 15 words.',
+            messages:[{role:'user',content:'Extract key style tip: '+(text||url)}]})});
+        const d=await res.json();
+        aiSummary=d.content.map(i=>i.text||'').join('').trim();
       }catch(e){}
-      const inspoTitleP=document.getElementById('inspo-title-input').value.trim();
-      const {error}=await sb.from('inspiration').insert({type:'photo',title:inspoTitleP||aiSummary.slice(0,40),image_data:compressed,source_url:url,ai_summary:aiSummary});
-      if(!error)saved++;
+
+      const {error}=await sb.from('inspiration').insert({
+        type:'text',
+        title: inspoTitle || text.slice(0,40) || url.slice(0,40) || 'Note',
+        text_content: text||'',
+        source_url: url||null,
+        ai_summary: aiSummary
+      });
+      if(error){ lastError=error.message||JSON.stringify(error); } else { saved++; }
+
+    } else if(inspoType==='photo'){
+      if(inspoQueue.length===0){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
+      for(const item of inspoQueue){
+        const compressed=await compressImage(item.img,600);
+        let aiSummary='';
+        try{
+          const b64=compressed.split(',')[1];
+          const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:60,
+              system:'Extract the key style lesson from this fashion image in max 12 words in English.',
+              messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Key style lesson?'}]}]})});
+          const d=await res.json();
+          aiSummary=d.content.map(i=>i.text||'').join('').trim();
+        }catch(e){}
+        const {error}=await sb.from('inspiration').insert({
+          type:'photo',
+          title: inspoTitle || aiSummary.slice(0,40) || 'Photo',
+          image_data: compressed,
+          source_url: url||null,
+          ai_summary: aiSummary
+        });
+        if(error){ lastError=error.message||JSON.stringify(error); } else { saved++; }
+      }
+    } else {
+      // No type selected
+      fb.textContent='Please select Photo or Tip/Note first.';
+      fb.className='feedback-msg error';
+      fb.style.display='block';
+      btn.disabled=false; btn.textContent='Save Inspiration';
+      return;
     }
+  }catch(e){
+    lastError=e.message||JSON.stringify(e);
   }
-  const fb=document.getElementById('inspo-feedback');
-  if(saved>0){fb.textContent=`${saved} inspiration${saved>1?'s':''} saved!`;fb.className='feedback-msg success';}
-  else{fb.textContent='Something went wrong.';fb.className='feedback-msg error';}
-  fb.style.display='block';setTimeout(()=>fb.style.display='none',3000);
-  document.getElementById('inspo-text-input').value='';
-  document.getElementById('inspo-url-input').value='';
-  if(document.getElementById('inspo-title-input')) document.getElementById('inspo-title-input').value='';
-  inspoQueue=[];
-  document.getElementById('inspo-queue-grid').innerHTML='';
+
+  if(saved>0){
+    fb.textContent=`${saved} inspiration${saved>1?'s':''} saved!`;
+    fb.className='feedback-msg success';
+    // Reset form
+    document.getElementById('inspo-text-input').value='';
+    document.getElementById('inspo-url-input').value='';
+    if(document.getElementById('inspo-title-input')) document.getElementById('inspo-title-input').value='';
+    inspoQueue=[];
+    const qg=document.getElementById('inspo-queue-grid');
+    if(qg){qg.innerHTML='';qg.style.display='none';}
+  } else {
+    fb.textContent='Save failed: '+(lastError||'Unknown error. Check console.');
+    fb.className='feedback-msg error';
+    console.error('Inspiration save error:',lastError);
+  }
+  fb.style.display='block';
+  setTimeout(()=>fb.style.display='none', saved>0?3000:6000);
+  btn.disabled=false;
   btn.textContent='Save Inspiration';
 }
 async function loadInspiration(){
   document.getElementById('inspo-loading').style.display='block';
   document.getElementById('inspo-grid').style.display='none';
   document.getElementById('inspo-empty').style.display='none';
-  try{
-    const {data}=await sb.from('inspiration').select('*').order('created_at',{ascending:false});
-    document.getElementById('inspo-loading').style.display='none';
-    if(!data||data.length===0){document.getElementById('inspo-empty').style.display='block';return;}
-    document.getElementById('inspo-grid').style.display='grid';
-    document.getElementById('inspiration-tab').textContent=`Inspiration — ${data.length}`;
-    document.getElementById('inspo-grid').innerHTML=data.map(item=>`
-      <div class="inspiration-card" id="inspo-${item.id}">
-        ${item.type==='photo'&&item.image_data
-          ?`<div style="position:relative">
-              <img class="inspiration-img" src="${item.image_data}" loading="lazy" onclick="toggleInspoExpand('${item.id}')">
-              ${item.title?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.title}</div>`:''}
+  const {data, error}=await sb.from('inspiration').select('*').order('created_at',{ascending:false});
+  document.getElementById('inspo-loading').style.display='none';
+  if(error){ console.error('loadInspiration error:',error); document.getElementById('inspo-empty').style.display='block'; return; }
+  if(!data||data.length===0){ document.getElementById('inspo-empty').style.display='block'; return; }
+  document.getElementById('inspo-grid').style.display='grid';
+  document.getElementById('inspiration-tab').textContent=`Inspiration — ${data.length}`;
+  document.getElementById('inspo-grid').innerHTML=data.map(item=>{
+    const safeTitle=(item.title||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
+    const safeText=(item.text_content||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
+    const displayTitle=item.title||item.ai_summary?.slice(0,40)||item.text_content?.slice(0,40)||'Note';
+    const urlLink=item.source_url?`<a href="${item.source_url}" target="_blank" style="font-size:11px;color:#888;letter-spacing:0.1em;word-break:break-all;display:block;margin-top:6px;">${item.source_url.replace(/^https?:\/\//,'').slice(0,40)}…</a>`:'';
+    return `<div class="inspiration-card" id="inspo-${item.id}">
+      ${item.type==='photo'&&item.image_data
+        ?`<div style="position:relative">
+            <img class="inspiration-img" src="${item.image_data}" loading="lazy" onclick="toggleInspoExpand('${item.id}')">
+            ${item.title?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.title}</div>`:''}
+          </div>
+          <div id="expand-${item.id}" style="display:none;padding:12px 14px;background:#f5f5f5;border-top:1px solid #e0e0e0">
+            <div style="font-size:13px;color:#444;line-height:1.6;font-style:italic">${item.text_content||item.ai_summary||''}</div>
+            ${urlLink}
+          </div>`
+        :`<div class="inspiration-text-card" onclick="toggleInspoExpand('${item.id}')">
+            <div style="font-size:16px;font-weight:700;color:#000;margin-bottom:6px">${displayTitle}</div>
+            <div id="expand-${item.id}" style="display:none;font-size:14px;color:#555;line-height:1.7;font-style:italic;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">
+              ${item.text_content||''}
+              ${urlLink}
             </div>
-            <div id="expand-${item.id}" style="display:none;padding:12px 14px;background:#f5f5f5;border-top:1px solid #e0e0e0">
-              <div style="font-size:13px;color:#444;line-height:1.6;font-style:italic">${item.text_content||item.ai_summary||''}</div>
-            </div>`
-          :`<div class="inspiration-text-card" onclick="toggleInspoExpand('${item.id}')">
-              <div style="font-size:16px;font-weight:700;color:#000;margin-bottom:6px">${item.title||item.text_content?.slice(0,40)||''}</div>
-              <div id="expand-${item.id}" style="display:none;font-size:14px;color:#555;line-height:1.7;font-style:italic;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">${item.text_content||''}</div>
-              ${item.ai_summary?`<div style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;margin-top:8px">${item.ai_summary}</div>`:''}</div>`}
-        <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
-          <button onclick="editInspo('${item.id}','${(item.title||'').replace(/'/g,"\'")}','${(item.text_content||'').replace(/'/g,"\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
-          <button onclick="deleteInspo('${item.id}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✕</button>
-        </div>
-      </div>`).join('');
-  }catch(e){document.getElementById('inspo-loading').style.display='none';}
+            ${item.ai_summary?`<div style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;margin-top:8px">${item.ai_summary}</div>`:
+              item.source_url?`<div style="font-size:10px;letter-spacing:0.15em;color:#aaa;margin-top:6px;word-break:break-all">${item.source_url.replace(/^https?:\/\//,'').slice(0,35)}…</div>`:''}
+          </div>`}
+      <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
+        <button onclick="editInspo('${item.id}','${safeTitle.replace(/'/g,"\\'")}','${safeText.replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
+        <button onclick="deleteInspo('${item.id}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function toggleInspoExpand(id){
   const el=document.getElementById('expand-'+id);
