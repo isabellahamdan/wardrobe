@@ -1118,13 +1118,20 @@ async function saveInspiration(){
       const text=document.getElementById('inspo-text-input').value.trim();
       if(!text && !url){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
 
-      // AI summary — fail gracefully
+      // AI summary — richer when URL-only, tip extraction when text provided
       let aiSummary='';
       try{
+        const isUrlOnly=!text&&url;
+        const systemPrompt=isUrlOnly
+          ?'You are a fashion stylist. The user saved an Instagram/TikTok link as style inspiration. Write 2-3 sentences describing what kind of look or style lesson this likely represents based on the URL and context. Be specific about silhouette, colors, and occasion. English only.'
+          :'Extract the key style tip in English in 1-2 direct sentences. Be specific about pieces, colors, and silhouette.';
+        const userMsg=isUrlOnly
+          ?`Describe the style inspiration from this link: ${url}${inspoTitle?' (titled: '+inspoTitle+')':''}`
+          :'Summarize this style note: '+(inspoTitle?inspoTitle+' — ':'')+text;
         const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:80,
-            system:'Extract the key style tip in English in max 15 words.',
-            messages:[{role:'user',content:'Extract key style tip: '+(text||url)}]})});
+          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:120,
+            system:systemPrompt,
+            messages:[{role:'user',content:userMsg}]})});
         const d=await res.json();
         aiSummary=d.content.map(i=>i.text||'').join('').trim();
       }catch(e){}
@@ -1204,26 +1211,27 @@ async function loadInspiration(){
   document.getElementById('inspo-grid').innerHTML=data.map(item=>{
     const safeTitle=(item.ai_summary||item.text_content||'').slice(0,40).replace(/`/g,'&#96;').replace(/"/g,'&quot;');
     const safeText=(item.text_content||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
-    const displayTitle=item.ai_summary?.slice(0,40)||item.text_content?.slice(0,40)||'Note';
-    const urlLink='';
+    const displayTitle=item.ai_summary?.slice(0,60)||bodyText?.slice(0,60)||'Note';
+    // Extract URL from text_content (saved as last line)
+    const lines=(item.text_content||'').split('\n');
+    const urlLine=lines.find(l=>l.startsWith('http'));
+    const bodyLines=lines.filter(l=>!l.startsWith('http'));
+    const bodyText=bodyLines.join('\n').trim();
+    const urlLink=urlLine?`<a href="${urlLine}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;margin-top:10px;padding:10px 14px;background:#000;color:#fff;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;text-decoration:none;text-align:center;">Open Link ↗</a>`:'';
     return `<div class="inspiration-card" id="inspo-${item.id}">
       ${item.type==='photo'&&item.image_data
         ?`<div style="position:relative">
             <img class="inspiration-img" src="${item.image_data}" loading="lazy" onclick="toggleInspoExpand('${item.id}')">
             ${item.ai_summary?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.ai_summary.slice(0,50)}</div>`:''}
           </div>
-          <div id="expand-${item.id}" style="display:none;padding:12px 14px;background:#f5f5f5;border-top:1px solid #e0e0e0">
-            <div style="font-size:13px;color:#444;line-height:1.6;font-style:italic">${item.text_content||item.ai_summary||''}</div>
+          <div style="padding:10px 12px;background:#f5f5f5;border-top:1px solid #e0e0e0">
+            ${item.ai_summary?`<div style="font-size:13px;color:#444;line-height:1.6;font-style:italic;margin-bottom:6px">${item.ai_summary}</div>`:''}
             ${urlLink}
           </div>`
-        :`<div class="inspiration-text-card" onclick="toggleInspoExpand('${item.id}')">
-            <div style="font-size:16px;font-weight:700;color:#000;margin-bottom:6px">${displayTitle}</div>
-            <div id="expand-${item.id}" style="display:none;font-size:14px;color:#555;line-height:1.7;font-style:italic;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">
-              ${item.text_content||''}
-              ${urlLink}
-            </div>
-            ${item.ai_summary?`<div style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;margin-top:8px">${item.ai_summary}</div>`:
-              ''}  
+        :`<div class="inspiration-text-card">
+            ${item.ai_summary?`<div style="font-size:15px;color:#000;line-height:1.65;font-style:italic;margin-bottom:10px">${item.ai_summary}</div>`:''}
+            ${bodyText&&bodyText!==item.ai_summary?`<div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:8px">${bodyText}</div>`:''}
+            ${urlLink}
           </div>`}
       <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
         <button onclick="editInspo('${item.id}','${safeTitle.replace(/'/g,"\\'")}','${safeText.replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
