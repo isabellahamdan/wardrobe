@@ -219,18 +219,18 @@
     <div class="pin-dot" id="dot-2"></div><div class="pin-dot" id="dot-3"></div>
   </div>
   <div class="pin-grid">
-    <button class="pin-btn" onclick="enterPin('1')">1</button>
-    <button class="pin-btn" onclick="enterPin('2')">2</button>
-    <button class="pin-btn" onclick="enterPin('3')">3</button>
-    <button class="pin-btn" onclick="enterPin('4')">4</button>
-    <button class="pin-btn" onclick="enterPin('5')">5</button>
-    <button class="pin-btn" onclick="enterPin('6')">6</button>
-    <button class="pin-btn" onclick="enterPin('7')">7</button>
-    <button class="pin-btn" onclick="enterPin('8')">8</button>
-    <button class="pin-btn" onclick="enterPin('9')">9</button>
-    <button class="pin-btn" onclick="clearPin()" style="font-size:16px">⌫</button>
-    <button class="pin-btn" onclick="enterPin('0')">0</button>
-    <button class="pin-btn" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
+    <button class="pin-btn" ontouchstart="enterPin('1')" onclick="enterPin('1')">1</button>
+    <button class="pin-btn" ontouchstart="enterPin('2')" onclick="enterPin('2')">2</button>
+    <button class="pin-btn" ontouchstart="enterPin('3')" onclick="enterPin('3')">3</button>
+    <button class="pin-btn" ontouchstart="enterPin('4')" onclick="enterPin('4')">4</button>
+    <button class="pin-btn" ontouchstart="enterPin('5')" onclick="enterPin('5')">5</button>
+    <button class="pin-btn" ontouchstart="enterPin('6')" onclick="enterPin('6')">6</button>
+    <button class="pin-btn" ontouchstart="enterPin('7')" onclick="enterPin('7')">7</button>
+    <button class="pin-btn" ontouchstart="enterPin('8')" onclick="enterPin('8')">8</button>
+    <button class="pin-btn" ontouchstart="enterPin('9')" onclick="enterPin('9')">9</button>
+    <button class="pin-btn" ontouchstart="clearPin()" onclick="clearPin()" style="font-size:16px">⌫</button>
+    <button class="pin-btn" ontouchstart="enterPin('0')" onclick="enterPin('0')">0</button>
+    <button class="pin-btn" ontouchstart="submitPin()" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
   </div>
   <div class="pin-error" id="pin-error">Incorrect PIN. Try again.</div>
 </div>
@@ -537,8 +537,21 @@
 // ── PIN ───────────────────────────────────────────────────
 const CORRECT_PIN='4212';
 let pinEntry='';
-function enterPin(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)setTimeout(submitPin,150);}
-function clearPin(){pinEntry=pinEntry.slice(0,-1);updateDots();}
+let lastPinTime=0;
+function enterPin(d){
+  const now=Date.now();
+  if(now-lastPinTime<300)return; // prevent double-fire
+  lastPinTime=now;
+  if(pinEntry.length>=4)return;
+  pinEntry+=d;updateDots();
+  if(pinEntry.length===4)setTimeout(submitPin,150);
+}
+function clearPin(){
+  const now=Date.now();
+  if(now-lastPinTime<300)return;
+  lastPinTime=now;
+  pinEntry=pinEntry.slice(0,-1);updateDots();
+}
 function updateDots(){for(let i=0;i<4;i++)document.getElementById('dot-'+i).classList.toggle('filled',i<pinEntry.length);}
 function submitPin(){
   if(pinEntry===CORRECT_PIN){
