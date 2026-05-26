@@ -33,8 +33,9 @@
   .pin-dots { display:flex; gap:16px; margin-bottom:36px; }
   .pin-dot { width:10px; height:10px; border-radius:50%; border:1px solid #444; background:transparent; transition:all 0.2s; }
   .pin-dot.filled { background:#FFF; border-color:#FFF; }
-  .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; position:relative; z-index:9999; }
-  .pin-btn { padding:18px; background:#111; border:1px solid #222; border-radius:2px; color:#FFF; font-size:22px; font-weight:400; cursor:pointer; font-family:'Cormorant Garamond',Georgia,serif; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+  .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; }
+  /* touch-action:manipulation removes the 300ms tap delay on mobile WITHOUT needing ontouchstart */
+  .pin-btn { padding:18px; background:#111; border:1px solid #222; border-radius:2px; color:#FFF; font-size:22px; font-weight:400; cursor:pointer; font-family:'Cormorant Garamond',Georgia,serif; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
   .pin-btn:active { background:#222; }
   .pin-error { color:#c0392b; font-size:13px; margin-top:18px; font-style:italic; opacity:0; transition:opacity 0.3s; }
   .pin-error.show { opacity:1; }
@@ -218,19 +219,20 @@
     <div class="pin-dot" id="dot-0"></div><div class="pin-dot" id="dot-1"></div>
     <div class="pin-dot" id="dot-2"></div><div class="pin-dot" id="dot-3"></div>
   </div>
+  <!-- FIX: Only onclick — touch-action:manipulation on .pin-btn already removes the 300ms tap delay -->
   <div class="pin-grid">
-    <button class="pin-btn" ontouchstart="enterPin('1')" onclick="enterPin('1')">1</button>
-    <button class="pin-btn" ontouchstart="enterPin('2')" onclick="enterPin('2')">2</button>
-    <button class="pin-btn" ontouchstart="enterPin('3')" onclick="enterPin('3')">3</button>
-    <button class="pin-btn" ontouchstart="enterPin('4')" onclick="enterPin('4')">4</button>
-    <button class="pin-btn" ontouchstart="enterPin('5')" onclick="enterPin('5')">5</button>
-    <button class="pin-btn" ontouchstart="enterPin('6')" onclick="enterPin('6')">6</button>
-    <button class="pin-btn" ontouchstart="enterPin('7')" onclick="enterPin('7')">7</button>
-    <button class="pin-btn" ontouchstart="enterPin('8')" onclick="enterPin('8')">8</button>
-    <button class="pin-btn" ontouchstart="enterPin('9')" onclick="enterPin('9')">9</button>
-    <button class="pin-btn" ontouchstart="clearPin()" onclick="clearPin()" style="font-size:16px">⌫</button>
-    <button class="pin-btn" ontouchstart="enterPin('0')" onclick="enterPin('0')">0</button>
-    <button class="pin-btn" ontouchstart="submitPin()" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
+    <button class="pin-btn" onclick="enterPin('1')">1</button>
+    <button class="pin-btn" onclick="enterPin('2')">2</button>
+    <button class="pin-btn" onclick="enterPin('3')">3</button>
+    <button class="pin-btn" onclick="enterPin('4')">4</button>
+    <button class="pin-btn" onclick="enterPin('5')">5</button>
+    <button class="pin-btn" onclick="enterPin('6')">6</button>
+    <button class="pin-btn" onclick="enterPin('7')">7</button>
+    <button class="pin-btn" onclick="enterPin('8')">8</button>
+    <button class="pin-btn" onclick="enterPin('9')">9</button>
+    <button class="pin-btn" onclick="clearPin()" style="font-size:16px">⌫</button>
+    <button class="pin-btn" onclick="enterPin('0')">0</button>
+    <button class="pin-btn" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
   </div>
   <div class="pin-error" id="pin-error">Incorrect PIN. Try again.</div>
 </div>
@@ -537,22 +539,22 @@
 // ── PIN ───────────────────────────────────────────────────
 const CORRECT_PIN='4212';
 let pinEntry='';
-let lastPinTime=0;
+let pinLocked=false; // prevent any input while animating wrong PIN
+
 function enterPin(d){
-  const now=Date.now();
-  if(now-lastPinTime<300)return; // prevent double-fire
-  lastPinTime=now;
-  if(pinEntry.length>=4)return;
-  pinEntry+=d;updateDots();
-  if(pinEntry.length===4)setTimeout(submitPin,150);
+  if(pinLocked||pinEntry.length>=4) return;
+  pinEntry+=d;
+  updateDots();
+  if(pinEntry.length===4) setTimeout(submitPin,150);
 }
 function clearPin(){
-  const now=Date.now();
-  if(now-lastPinTime<300)return;
-  lastPinTime=now;
-  pinEntry=pinEntry.slice(0,-1);updateDots();
+  if(pinLocked) return;
+  pinEntry=pinEntry.slice(0,-1);
+  updateDots();
 }
-function updateDots(){for(let i=0;i<4;i++)document.getElementById('dot-'+i).classList.toggle('filled',i<pinEntry.length);}
+function updateDots(){
+  for(let i=0;i<4;i++) document.getElementById('dot-'+i).classList.toggle('filled',i<pinEntry.length);
+}
 function submitPin(){
   if(pinEntry===CORRECT_PIN){
     document.getElementById('lock-screen').style.display='none';
@@ -574,10 +576,17 @@ function submitPin(){
     }
     if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
   } else {
-    const err=document.getElementById('pin-error');err.classList.add('show');
+    pinLocked=true;
+    const err=document.getElementById('pin-error');
+    err.classList.add('show');
     document.querySelector('.pin-dots').style.animation='shake 0.3s ease';
-    setTimeout(()=>{err.classList.remove('show');document.querySelector('.pin-dots').style.animation='';},1500);
-    pinEntry='';updateDots();
+    setTimeout(()=>{
+      err.classList.remove('show');
+      document.querySelector('.pin-dots').style.animation='';
+      pinEntry='';
+      updateDots();
+      pinLocked=false;
+    },1500);
   }
 }
 
@@ -726,20 +735,16 @@ async function composeLookFromPiece(){
 }
 
 async function _doCompose(extra,anchorPiece){
-  // Fetch wardrobe
   let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,piece_name,category,image_data,image_url').eq('occasion',selectedOccasion).limit(20);
   if(!outfits||outfits.length<3){const {data:any}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,piece_name,category,image_data,image_url').limit(20);outfits=any||[];}
   window._lastOutfits=outfits;
-  // Fetch inspiration
   const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
   const inspoContext=inspo&&inspo.length>0?'\n\nStyle inspiration & tips:\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
-  // Fetch feedback
   const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason').limit(50);
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0?`\n\nFeedback history:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
   const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Look'}/${o.category||''}/${o.occasion}/${o.weather||'?'}] ${o.piece_name||o.description||'outfit'}`).join('\n');
-
   const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.piece_name||anchorPiece.category}" (ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
 
   const prompt=`Create TWO complete outfit options for:
@@ -1172,8 +1177,7 @@ async function loadInspiration(){
               <div id="expand-${item.id}" style="display:none;font-size:14px;color:#555;line-height:1.7;font-style:italic;margin-top:8px;border-top:1px solid #e0e0e0;padding-top:8px">${item.text_content||''}</div>
               ${item.ai_summary?`<div style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;margin-top:8px">${item.ai_summary}</div>`:''}</div>`}
         <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
-          <button onclick="editInspo('${item.id}','${(item.title||'').replace(/'/g,"\'")}','${(item.text_content||'').replace(/'/g,"\'").replace(/
-/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
+          <button onclick="editInspo('${item.id}','${(item.title||'').replace(/'/g,"\'")}','${(item.text_content||'').replace(/'/g,"\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
           <button onclick="deleteInspo('${item.id}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
       </div>`).join('');
@@ -1187,7 +1191,6 @@ function toggleInspoExpand(id){
 function editInspo(id,currentTitle,currentText){
   const card=document.getElementById('inspo-'+id);
   if(!card)return;
-  // Replace card content with edit form
   const editHtml=`<div style="padding:16px">
     <div style="font-size:11px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:8px">Title</div>
     <input type="text" id="edit-title-${id}" value="${currentTitle}" style="width:100%;border:none;border-bottom:2px solid #000;padding:10px 0;font-size:17px;font-family:inherit;font-weight:700;margin-bottom:16px;background:transparent;">
