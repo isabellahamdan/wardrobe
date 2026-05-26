@@ -897,10 +897,9 @@ function renderOption(idx){
     const isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     const safeId=`${idx}-${pi}`;
     const safeName=p.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
+    // Always show the actual photo — full look photo or individual piece
     const photoHtml=imgSrc
-      ?isFullLookRef&&heroLook
-        ?`<div class="piece-photo" style="background:#f5f5f5;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;letter-spacing:0.1em;color:#999;text-transform:uppercase;text-align:center;padding:8px">↑ See above</span></div>`
-        :`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}"></div>`
+      ?`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>`
       :`<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>`;
     return `<div class="piece-card" id="card-${safeId}">
       ${photoHtml}
