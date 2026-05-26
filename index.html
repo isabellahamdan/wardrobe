@@ -27,14 +27,14 @@
   @keyframes slideIn { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
 
   /* LOCK */
-  #lock-screen { position:fixed; inset:0; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
+  #lock-screen { position:fixed; inset:0; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; pointer-events:all; }
   .lock-logo { font-size:42px; font-weight:700; font-style:italic; color:#FFF; margin-bottom:6px; }
   .lock-sub { font-size:10px; letter-spacing:0.45em; color:#555; text-transform:uppercase; margin-bottom:52px; }
   .pin-dots { display:flex; gap:16px; margin-bottom:36px; }
   .pin-dot { width:10px; height:10px; border-radius:50%; border:1px solid #444; background:transparent; transition:all 0.2s; }
   .pin-dot.filled { background:#FFF; border-color:#FFF; }
-  .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; }
-  .pin-btn { padding:18px; background:#111; border:1px solid #222; border-radius:2px; color:#FFF; font-size:22px; font-weight:400; cursor:pointer; font-family:'Cormorant Garamond',Georgia,serif; }
+  .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; position:relative; z-index:9999; }
+  .pin-btn { padding:18px; background:#111; border:1px solid #222; border-radius:2px; color:#FFF; font-size:22px; font-weight:400; cursor:pointer; font-family:'Cormorant Garamond',Georgia,serif; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .pin-btn:active { background:#222; }
   .pin-error { color:#c0392b; font-size:13px; margin-top:18px; font-style:italic; opacity:0; transition:opacity 0.3s; }
   .pin-error.show { opacity:1; }
