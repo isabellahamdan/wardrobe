@@ -1129,11 +1129,11 @@ async function saveInspiration(){
         aiSummary=d.content.map(i=>i.text||'').join('').trim();
       }catch(e){}
 
+      // Prepend title/URL into text_content so nothing is lost
+      const fullText=[inspoTitle, text, url].filter(Boolean).join('\n');
       const {error}=await sb.from('inspiration').insert({
         type:'text',
-        title: inspoTitle || text.slice(0,40) || url.slice(0,40) || 'Note',
-        text_content: text||'',
-        source_url: url||null,
+        text_content: fullText,
         ai_summary: aiSummary
       });
       if(error){ lastError=error.message||JSON.stringify(error); } else { saved++; }
@@ -1154,10 +1154,8 @@ async function saveInspiration(){
         }catch(e){}
         const {error}=await sb.from('inspiration').insert({
           type:'photo',
-          title: inspoTitle || aiSummary.slice(0,40) || 'Photo',
           image_data: compressed,
-          source_url: url||null,
-          ai_summary: aiSummary
+          ai_summary: aiSummary || inspoTitle || 'Photo'
         });
         if(error){ lastError=error.message||JSON.stringify(error); } else { saved++; }
       }
@@ -1204,15 +1202,15 @@ async function loadInspiration(){
   document.getElementById('inspo-grid').style.display='grid';
   document.getElementById('inspiration-tab').textContent=`Inspiration — ${data.length}`;
   document.getElementById('inspo-grid').innerHTML=data.map(item=>{
-    const safeTitle=(item.title||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
+    const safeTitle=(item.ai_summary||item.text_content||'').slice(0,40).replace(/`/g,'&#96;').replace(/"/g,'&quot;');
     const safeText=(item.text_content||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
-    const displayTitle=item.title||item.ai_summary?.slice(0,40)||item.text_content?.slice(0,40)||'Note';
-    const urlLink=item.source_url?`<a href="${item.source_url}" target="_blank" style="font-size:11px;color:#888;letter-spacing:0.1em;word-break:break-all;display:block;margin-top:6px;">${item.source_url.replace(/^https?:\/\//,'').slice(0,40)}…</a>`:'';
+    const displayTitle=item.ai_summary?.slice(0,40)||item.text_content?.slice(0,40)||'Note';
+    const urlLink='';
     return `<div class="inspiration-card" id="inspo-${item.id}">
       ${item.type==='photo'&&item.image_data
         ?`<div style="position:relative">
             <img class="inspiration-img" src="${item.image_data}" loading="lazy" onclick="toggleInspoExpand('${item.id}')">
-            ${item.title?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.title}</div>`:''}
+            ${item.ai_summary?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.ai_summary.slice(0,50)}</div>`:''}
           </div>
           <div id="expand-${item.id}" style="display:none;padding:12px 14px;background:#f5f5f5;border-top:1px solid #e0e0e0">
             <div style="font-size:13px;color:#444;line-height:1.6;font-style:italic">${item.text_content||item.ai_summary||''}</div>
@@ -1225,7 +1223,7 @@ async function loadInspiration(){
               ${urlLink}
             </div>
             ${item.ai_summary?`<div style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;margin-top:8px">${item.ai_summary}</div>`:
-              item.source_url?`<div style="font-size:10px;letter-spacing:0.15em;color:#aaa;margin-top:6px;word-break:break-all">${item.source_url.replace(/^https?:\/\//,'').slice(0,35)}…</div>`:''}
+              ''}  
           </div>`}
       <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
         <button onclick="editInspo('${item.id}','${safeTitle.replace(/'/g,"\\'")}','${safeText.replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
@@ -1239,14 +1237,12 @@ function toggleInspoExpand(id){
   if(el) el.style.display=el.style.display==='none'?'block':'none';
 }
 
-function editInspo(id,currentTitle,currentText){
+function editInspo(id,_unused,currentText){
   const card=document.getElementById('inspo-'+id);
   if(!card)return;
   const editHtml=`<div style="padding:16px">
-    <div style="font-size:11px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:8px">Title</div>
-    <input type="text" id="edit-title-${id}" value="${currentTitle}" style="width:100%;border:none;border-bottom:2px solid #000;padding:10px 0;font-size:17px;font-family:inherit;font-weight:700;margin-bottom:16px;background:transparent;">
-    <div style="font-size:11px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:8px">Description</div>
-    <textarea id="edit-text-${id}" style="width:100%;border:1px solid #e0e0e0;border-bottom:2px solid #000;padding:12px;font-size:14px;font-family:inherit;resize:none;min-height:100px;background:#fff;">${currentText}</textarea>
+    <div style="font-size:11px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:8px">Edit Note</div>
+    <textarea id="edit-text-${id}" style="width:100%;border:1px solid #e0e0e0;border-bottom:2px solid #000;padding:12px;font-size:14px;font-family:inherit;resize:none;min-height:120px;background:#fff;">${currentText}</textarea>
     <div style="display:flex;gap:6px;margin-top:12px">
       <button onclick="saveInspoEdit('${id}')" style="flex:1;padding:12px;background:#000;color:#fff;border:none;font-size:12px;letter-spacing:0.3em;text-transform:uppercase;font-family:inherit;cursor:pointer;">Save</button>
       <button onclick="loadInspiration()" style="padding:12px 18px;background:transparent;border:1px solid #e0e0e0;font-size:12px;font-family:inherit;cursor:pointer;">Cancel</button>
@@ -1258,7 +1254,7 @@ function editInspo(id,currentTitle,currentText){
 async function saveInspoEdit(id){
   const title=document.getElementById('edit-title-'+id).value.trim();
   const text=document.getElementById('edit-text-'+id).value.trim();
-  const {error}=await sb.from('inspiration').update({title,text_content:text}).eq('id',id);
+  const {error}=await sb.from('inspiration').update({text_content:text}).eq('id',id);
   if(!error) loadInspiration();
 }
 
