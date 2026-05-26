@@ -745,7 +745,7 @@ async function _doCompose(extra,anchorPiece){
   const fbContext=fbData&&fbData.length>0?`\n\nFeedback history:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
   const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Look'}/${o.occasion}/${o.weather||'?'}] ${o.description||'outfit'}`).join('\n');
-  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.piece_name||anchorPiece.category}" (ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
+  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
 
   const prompt=`Create TWO complete outfit options for:
 OCCASION: ${selectedOccasion}
@@ -787,7 +787,7 @@ function showResult(anchorPiece){
   document.getElementById('stylist-scratch').style.display='none';
   document.getElementById('stylist-piece').style.display='none';
   document.getElementById('stylist-result').style.display='block';
-  const anchorLabel=anchorPiece?` — Built around: ${anchorPiece.piece_name||anchorPiece.category}`:'';
+  const anchorLabel=anchorPiece?` — Built around: ${anchorPiece.description?.split(' | ')[0]||''}`:'';
   document.getElementById('result-label').textContent=`${selectedOccasion} — ${selectedWeatherStyle}${anchorLabel}`;
   document.getElementById('result-headline').textContent=currentOptions[0]?.headline||'';
   document.getElementById('result-color').textContent=currentOptions[0]?.colorStory||'';
