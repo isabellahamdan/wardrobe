@@ -639,7 +639,7 @@ function selectStyleMode(mode,btn){
 async function loadPiecePicker(){
   const container=document.getElementById('piece-picker-container');
   container.innerHTML='<div class="loading-dot">Loading your pieces...</div>';
-  const {data}=await sb.from('outfits').select('id,piece_name,category,image_data,image_url,occasion').eq('photo_type','Individual Piece').order('created_at',{ascending:false});
+  const {data}=await sb.from('outfits').select('id,description,image_data,image_url,occasion,photo_type').eq('photo_type','Individual Piece').order('created_at',{ascending:false});
   if(!data||data.length===0){
     container.innerHTML='<div class="empty-state"><div class="empty-text">No individual pieces yet.</div><p style="font-size:14px;color:#999;font-style:italic;">Add pieces to your archive first — go to Archive → + Add → Pieces.</p></div>';
     return;
@@ -647,7 +647,7 @@ async function loadPiecePicker(){
   container.innerHTML=`<div class="piece-picker-grid">${data.map(p=>`
     <div class="piece-picker-item" id="picker-${p.id}" onclick="selectPiece('${p.id}')">
       <img class="piece-picker-img" src="${p.image_data||p.image_url}" onerror="this.style.display='none'">
-      <div class="piece-picker-name">${p.piece_name||p.category||'Piece'}</div>
+      <div class="piece-picker-name">${p.description?.split(' | ')[0]||'Piece'}</div>
       <div class="piece-picker-check">✓</div>
     </div>`).join('')}</div>`;
   window._allPieces=data;
@@ -735,8 +735,8 @@ async function composeLookFromPiece(){
 }
 
 async function _doCompose(extra,anchorPiece){
-  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,piece_name,category,image_data,image_url').eq('occasion',selectedOccasion).limit(20);
-  if(!outfits||outfits.length<3){const {data:any}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,piece_name,category,image_data,image_url').limit(20);outfits=any||[];}
+  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').eq('occasion',selectedOccasion).limit(20);
+  if(!outfits||outfits.length<3){const {data:any}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').limit(20);outfits=any||[];}
   window._lastOutfits=outfits;
   const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
   const inspoContext=inspo&&inspo.length>0?'\n\nStyle inspiration & tips:\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
@@ -744,7 +744,7 @@ async function _doCompose(extra,anchorPiece){
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0?`\n\nFeedback history:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
-  const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Look'}/${o.category||''}/${o.occasion}/${o.weather||'?'}] ${o.piece_name||o.description||'outfit'}`).join('\n');
+  const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Look'}/${o.occasion}/${o.weather||'?'}] ${o.description||'outfit'}`).join('\n');
   const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.piece_name||anchorPiece.category}" (ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
 
   const prompt=`Create TWO complete outfit options for:
@@ -999,12 +999,14 @@ async function saveToArchive(){
     try{
       const compressed=await compressImage(item.img);
       const description=await detectDescription(compressed);
+      // Fold piece name + category into description for pieces
+      const fullDesc=isPieces
+        ?[pieceName,selectedCategoryTag,description].filter(Boolean).join(' | ')
+        :description;
       const {error}=await sb.from('outfits').insert({
         occasion:selectedOccasionTag,weather:selectedWeatherTag,
         photo_type:isPieces?'Individual Piece':'Full Outfit',
-        category:isPieces?selectedCategoryTag:null,
-        piece_name:isPieces?pieceName:null,
-        description,image_url:'',image_data:compressed
+        description:fullDesc,image_url:'',image_data:compressed
       });
       if(error){lastError=error;throw error;}
       saved++;
@@ -1052,8 +1054,8 @@ async function loadGallery(){
       <div class="gallery-item" id="item-${item.id}">
         <div style="position:relative">
           <img class="gallery-img" src="${item.image_data||item.image_url}" loading="lazy" onerror="this.style.display='none'">
-          ${isPiecesView&&item.piece_name
-            ?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3">${item.piece_name}</div>`
+          ${isPiecesView&&item.description
+            ?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3">${item.description?.split(' | ')[0]||''}</div>`
             :`<div class="gallery-tag" style="background:${occColors[item.occasion]||'#222'}"><span>${item.occasion||''}</span></div>
                ${item.weather?`<div class="gallery-tag bottom" style="background:${wxColors[item.weather]||'#555'}"><span>${item.weather}</span></div>`:''}`}
           <button class="delete-btn" onclick="deleteItem('${item.id}')">✕</button>
