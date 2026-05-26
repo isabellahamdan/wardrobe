@@ -246,6 +246,11 @@
         </div>
         <div style="margin-bottom:28px">
           <div class="section-label">Weather</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <div class="section-label" style="margin-bottom:0">Weather</div>
+            <button onclick="autoDetectWeather()" id="weather-auto-btn" style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;border:1px solid #000;background:#fff;color:#000;padding:7px 14px;cursor:pointer;font-family:inherit;transition:all 0.2s;">⟳ Auto-detect</button>
+          </div>
+          <div id="weather-status" style="font-size:13px;color:#666;font-style:italic;margin-bottom:10px;display:none"></div>
           <div class="weather-grid">
             <button class="weather-btn" onclick="selectWeatherStyle(this,'Warm')">Warm</button>
             <button class="weather-btn" onclick="selectWeatherStyle(this,'Mild')">Mild</button>
@@ -256,6 +261,15 @@
         <div style="margin-bottom:28px">
           <div class="section-label">Tell me more</div>
           <textarea class="context-textarea" id="extra-context" rows="4" placeholder="e.g. Important meeting at 3pm... I want something a bit romantic... I feel like wearing boots today... Dinner at a nice restaurant..."></textarea>
+        </div>
+        <div style="margin-bottom:20px; display:flex; align-items:center; gap:14px; padding:16px; border:1px solid #e0e0e0;">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#000;margin-bottom:3px;">Archive only</div>
+            <div style="font-size:13px;color:#666;font-style:italic;">Suggest only outfits from my photos</div>
+          </div>
+          <div onclick="toggleArchiveOnly()" id="archive-toggle" style="width:48px;height:26px;border-radius:100px;background:#e0e0e0;position:relative;cursor:pointer;transition:all 0.3s;flex-shrink:0;">
+            <div id="archive-toggle-knob" style="width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all 0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
+          </div>
         </div>
         <button class="btn-primary" id="compose-btn" onclick="composeLook()" disabled>Style Me</button>
         <div id="compose-error" style="display:none" class="feedback-msg error" style="margin-top:12px"></div>
@@ -507,6 +521,52 @@ function selectMood(m,btn){selectedMood=m;document.querySelectorAll('.mood-btn')
 function selectWeatherStyle(btn,w){selectedWeatherStyle=w;document.querySelectorAll('.weather-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');checkCompose();}
 function checkCompose(){document.getElementById('compose-btn').disabled=!(selectedOccasion&&selectedWeatherStyle);}
 
+// ── AUTO WEATHER ──────────────────────────────────────────
+async function autoDetectWeather(){
+  const btn=document.getElementById('weather-auto-btn');
+  const status=document.getElementById('weather-status');
+  btn.textContent='Detecting...'; btn.disabled=true;
+  status.style.display='block'; status.textContent='Getting your location...';
+  try{
+    const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+    const lat=pos.coords.latitude; const lon=pos.coords.longitude;
+    status.textContent='Checking weather...';
+    const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weathercode&timezone=auto`);
+    const data=await res.json();
+    const temp=data.current.temperature_2m;
+    const precip=data.current.precipitation;
+    const code=data.current.weathercode;
+    // Determine weather category
+    let weather='Mild';
+    const isRaining=precip>0||[51,53,55,61,63,65,71,73,75,80,81,82,95,96,99].includes(code);
+    if(isRaining) weather='Cold/Rain';
+    else if(temp>=22) weather='Warm';
+    else if(temp>=12) weather='Mild';
+    else if(temp>=0) weather='Cold/Rain';
+    else weather='Winter';
+    // Select the button
+    document.querySelectorAll('.weather-btn').forEach(b=>{
+      if(b.textContent.trim()===weather){selectWeatherStyle(b,weather);}
+    });
+    const condition=isRaining?'rainy':(temp>=22?'warm':temp>=12?'mild':'cold');
+    status.textContent=`${Math.round(temp)}°C · ${condition} — selected ${weather}`;
+    btn.textContent='⟳ Auto-detect';btn.disabled=false;
+  }catch(e){
+    status.textContent='Could not detect location. Please select manually.';
+    btn.textContent='⟳ Auto-detect';btn.disabled=false;
+  }
+}
+
+// ── ARCHIVE ONLY TOGGLE ───────────────────────────────────
+let archiveOnly=false;
+function toggleArchiveOnly(){
+  archiveOnly=!archiveOnly;
+  const toggle=document.getElementById('archive-toggle');
+  const knob=document.getElementById('archive-toggle-knob');
+  toggle.style.background=archiveOnly?'#000':'#e0e0e0';
+  knob.style.left=archiveOnly?'24px':'2px';
+}
+
 async function composeLook(){
   const extra=document.getElementById('extra-context').value;
   const btn=document.getElementById('compose-btn');
@@ -533,7 +593,7 @@ async function composeLook(){
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const disliked=fbData?fbData.filter(f=>f.feedback==='dislike').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0
-    ? `\n\nHer feedback history:\nLikes: ${liked.slice(0,10).join(', ')}\nDislikes: ${disliked.slice(0,10).join(', ')}`
+    ? `\n\nHer feedback history:\nLikes: ${liked.slice(0,10).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,10).map(f=>f.reason?`${f.piece_name} (reason: ${f.reason})`:f.piece_name).join(', ')}`
     : '';
 
   const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Full Outfit'}/${o.occasion}/${o.weather||'?'}] ${o.description||'outfit'}`).join('\n');
@@ -542,6 +602,7 @@ async function composeLook(){
 OCCASION: ${selectedOccasion}
 WEATHER: ${selectedWeatherStyle}
 ${extra?'NOTES: '+extra:''}
+${archiveOnly?'IMPORTANT: Suggest ONLY pieces that are explicitly referenced in the wardrobe archive below. Do not suggest anything not in the archive.':''}
 
 WARDROBE (${outfits.length} items):
 ${wardrobeList||'No wardrobe items yet'}
@@ -551,6 +612,7 @@ ${fbContext}
 For each option, suggest 5 pieces: Top, Bottom (or Dress), Shoes, Outerwear, Accessories.
 For each piece, reference a wardrobe item ID if applicable.
 Be direct and pragmatic. Only add a note when it's a useful tip or clear reason. No flowery language.
+IMPORTANT: For pieces NOT in her wardrobe archive (no wardrobeId), give a rich visual description in the name so she can picture it exactly — include color, fabric, silhouette, and fit. Example: "Fluid black satin slip skirt, midi length, bias cut" or "Ivory oversized linen shirt, relaxed fit, slightly sheer". Make it so vivid she can picture it without a photo.
 
 Respond ONLY in this exact JSON:
 {
@@ -637,12 +699,14 @@ function renderOption(idx){
   piecesEl.innerHTML=opt.pieces.map((p,pi)=>{
     const matchedOutfit=p.wardrobeId?allOutfits.find(o=>o.id===p.wardrobeId):null;
     const imgSrc=matchedOutfit?(matchedOutfit.image_data||matchedOutfit.image_url):null;
+    const safeId=`${idx}-${pi}`;
+    const safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
 
     const photoHtml=imgSrc
       ?`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}"></div>`
       :`<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive yet</div></div>`;
 
-    return `<div class="piece-card">
+    return `<div class="piece-card" id="card-${safeId}">
       <div class="piece-card-inner">
         ${photoHtml}
         <div class="piece-content">
@@ -650,8 +714,16 @@ function renderOption(idx){
           <div class="piece-name">${p.name}</div>
           ${p.note?`<div class="piece-note">${p.note}</div>`:''}
           <div class="piece-feedback">
-            <button class="fb-btn" id="fb-${idx}-${pi}-like" onclick="saveFeedback(${idx},${pi},'like','${p.name.replace(/'/g,"\\'")}')">👍</button>
-            <button class="fb-btn" id="fb-${idx}-${pi}-dislike" onclick="saveFeedback(${idx},${pi},'dislike','${p.name.replace(/'/g,"\\'")}')">👎</button>
+            <button class="fb-btn" id="fb-${safeId}-like" onclick="saveFeedback('${safeId}','like','${safeName}')">👍</button>
+            <button class="fb-btn" id="fb-${safeId}-dislike" onclick="showDislikeReason('${safeId}','${safeName}')">👎</button>
+          </div>
+          <div id="reason-box-${safeId}" style="display:none;margin-top:10px;">
+            <input type="text" id="reason-input-${safeId}" placeholder="Why not? (e.g. too hot, feeling bloated...)" 
+              style="width:100%;border:none;border-bottom:1px solid #000;padding:8px 0;font-size:13px;font-family:inherit;color:#000;background:transparent;outline:none;">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button onclick="saveDislikeWithReason('${safeId}','${safeName}')" style="flex:1;padding:8px;background:#000;color:#fff;border:none;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-family:inherit;cursor:pointer;">Save</button>
+              <button onclick="hideDislikeReason('${safeId}')" style="padding:8px 14px;background:transparent;border:1px solid #e0e0e0;font-size:11px;font-family:inherit;cursor:pointer;">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -659,9 +731,30 @@ function renderOption(idx){
   }).join('');
 }
 
-async function saveFeedback(optIdx,pieceIdx,feedback,pieceName){
-  const likeBtn=document.getElementById(`fb-${optIdx}-${pieceIdx}-like`);
-  const dislikeBtn=document.getElementById(`fb-${optIdx}-${pieceIdx}-dislike`);
+function showDislikeReason(safeId, pieceName){
+  document.getElementById(`reason-box-${safeId}`).style.display='block';
+  document.getElementById(`fb-${safeId}-dislike`).classList.add('disliked');
+  setTimeout(()=>document.getElementById(`reason-input-${safeId}`).focus(),100);
+}
+
+function hideDislikeReason(safeId){
+  document.getElementById(`reason-box-${safeId}`).style.display='none';
+  document.getElementById(`fb-${safeId}-dislike`).classList.remove('disliked');
+}
+
+async function saveDislikeWithReason(safeId, pieceName){
+  const reason=document.getElementById(`reason-input-${safeId}`).value.trim();
+  document.getElementById(`reason-box-${safeId}`).style.display='none';
+  document.getElementById(`fb-${safeId}-dislike`).classList.add('disliked');
+  await sb.from('style_feedback').insert({
+    piece_name:pieceName, feedback:'dislike', reason:reason||null,
+    occasion:selectedOccasion, weather:selectedWeatherStyle
+  });
+}
+
+async function saveFeedback(safeId,feedback,pieceName){
+  const likeBtn=document.getElementById(`fb-${safeId}-like`);
+  const dislikeBtn=document.getElementById(`fb-${safeId}-dislike`);
   likeBtn.classList.toggle('liked',feedback==='like');
   dislikeBtn.classList.toggle('disliked',feedback==='dislike');
   await sb.from('style_feedback').insert({
@@ -695,6 +788,10 @@ async function sendChat(){
 
 function resetStylist(){
   selectedOccasion=null;selectedWeatherStyle=null;currentOptions=[];chatHistory=[];
+  archiveOnly=false;
+  const toggle=document.getElementById('archive-toggle');
+  const knob=document.getElementById('archive-toggle-knob');
+  if(toggle){toggle.style.background='#e0e0e0';knob.style.left='2px';}
   document.querySelectorAll('.occasion-btn,.weather-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('extra-context').value='';
   document.getElementById('stylist-form').style.display='block';
