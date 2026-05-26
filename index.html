@@ -9,7 +9,42 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ── EDIT GALLERY ITEM ─────────────────────────────────────
+let _editId=null, _editOcc=null, _editWx=null;
+const editOccColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A'};
+const editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
+
+function openEditItem(id,occ,wx,desc){
+  _editId=id; _editOcc=occ; _editWx=wx;
+  document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
+  // Reset buttons
+  document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+  // Highlight current
+  document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(b.textContent===occ){b.style.background=editOccColors[occ]||'#000';b.style.borderColor=editOccColors[occ]||'#000';b.style.color='#fff';}});
+  document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(b.textContent===wx){b.style.background=editWxColors[wx]||'#000';b.style.borderColor=editWxColors[wx]||'#000';b.style.color='#fff';}});
+  const modal=document.getElementById('edit-modal');
+  modal.style.display='flex';
+}
+function setEditTag(type,val,btn){
+  if(type==='occ'){
+    _editOcc=val;
+    document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+    btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';
+  } else {
+    _editWx=val;
+    document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+    btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';
+  }
+}
+function closeEditItem(){document.getElementById('edit-modal').style.display='none';}
+async function saveEditItem(){
+  const desc=document.getElementById('edit-desc-input').value.trim();
+  const {error}=await sb.from('outfits').update({occasion:_editOcc,weather:_editWx,description:desc||null}).eq('id',_editId);
+  if(!error){closeEditItem();loadGallery();}
+  else{alert('Save failed: '+error.message);}
+}
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -1058,6 +1093,7 @@ async function loadGallery(){
             ?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3">${item.description?.split(' | ')[0]||''}</div>`
             :`<div class="gallery-tag" style="background:${occColors[item.occasion]||'#222'}"><span>${item.occasion||''}</span></div>
                ${item.weather?`<div class="gallery-tag bottom" style="background:${wxColors[item.weather]||'#555'}"><span>${item.weather}</span></div>`:''}`}
+          <button class="delete-btn" style="right:32px" onclick="openEditItem('${item.id}','${item.occasion||''}','${item.weather||''}','${(item.description||'').replace(/'/g,"\\'")}')">✏️</button>
           <button class="delete-btn" onclick="deleteItem('${item.id}')">✕</button>
         </div>
       </div>`).join('');
@@ -1273,6 +1309,71 @@ async function deleteInspo(id){
   const{error}=await sb.from('inspiration').delete().eq('id',id);
   if(!error){const el=document.getElementById('inspo-'+id);if(el)el.remove();}
 }
+
+// ── EDIT GALLERY ITEM ─────────────────────────────────────
+let _editId=null, _editOcc=null, _editWx=null;
+const editOccColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A'};
+const editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
+
+function openEditItem(id,occ,wx,desc){
+  _editId=id; _editOcc=occ; _editWx=wx;
+  document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
+  // Reset buttons
+  document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+  // Highlight current
+  document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(b.textContent===occ){b.style.background=editOccColors[occ]||'#000';b.style.borderColor=editOccColors[occ]||'#000';b.style.color='#fff';}});
+  document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(b.textContent===wx){b.style.background=editWxColors[wx]||'#000';b.style.borderColor=editWxColors[wx]||'#000';b.style.color='#fff';}});
+  const modal=document.getElementById('edit-modal');
+  modal.style.display='flex';
+}
+function setEditTag(type,val,btn){
+  if(type==='occ'){
+    _editOcc=val;
+    document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+    btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';
+  } else {
+    _editWx=val;
+    document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+    btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';
+  }
+}
+function closeEditItem(){document.getElementById('edit-modal').style.display='none';}
+async function saveEditItem(){
+  const desc=document.getElementById('edit-desc-input').value.trim();
+  const {error}=await sb.from('outfits').update({occasion:_editOcc,weather:_editWx,description:desc||null}).eq('id',_editId);
+  if(!error){closeEditItem();loadGallery();}
+  else{alert('Save failed: '+error.message);}
+}
 </script>
+
+<!-- EDIT ITEM MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;align-items:flex-end;justify-content:center;">
+  <div style="background:#fff;width:100%;max-width:580px;padding:28px 24px 48px;border-top:3px solid #000;">
+    <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:20px">Edit Tags</div>
+
+    <input type="text" id="edit-desc-input" placeholder="Name / description..." style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:18px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;margin-bottom:24px;background:transparent;color:#000;">
+
+    <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:10px">Occasion</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:20px" id="edit-occ-grid">
+      <button class="tag-btn" onclick="setEditTag('occ','Day',this)">Day</button>
+      <button class="tag-btn" onclick="setEditTag('occ','Work',this)">Work</button>
+      <button class="tag-btn" onclick="setEditTag('occ','Night Out',this)">Night Out</button>
+      <button class="tag-btn" onclick="setEditTag('occ','Event',this)">Event</button>
+    </div>
+
+    <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:10px">Weather</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:28px" id="edit-wx-grid">
+      <button class="tag-btn" onclick="setEditTag('wx','Warm',this)">Warm</button>
+      <button class="tag-btn" onclick="setEditTag('wx','Mild',this)">Mild</button>
+      <button class="tag-btn" onclick="setEditTag('wx','Cold/Rain',this)">Cold/Rain</button>
+      <button class="tag-btn" onclick="setEditTag('wx','Winter',this)">Winter</button>
+    </div>
+
+    <div style="display:flex;gap:2px">
+      <button onclick="closeEditItem()" style="padding:18px 20px;background:transparent;border:1px solid #000;font-size:12px;letter-spacing:0.35em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Cancel</button>
+      <button onclick="saveEditItem()" style="flex:1;padding:18px;background:#000;border:none;color:#fff;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
