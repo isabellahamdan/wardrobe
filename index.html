@@ -770,36 +770,49 @@ async function composeLookFromPiece(){
 }
 
 async function _doCompose(extra,anchorPiece){
-  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').eq('occasion',selectedOccasion).limit(20);
-  if(!outfits||outfits.length<3){const {data:any}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').limit(20);outfits=any||[];}
+  // Fetch all pieces first, then broader set if not enough
+  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(60);
+  outfits=outfits||[];
   window._lastOutfits=outfits;
+
+  // Separate individual pieces from full looks for the wardrobe list
+  const pieces=outfits.filter(o=>o.photo_type==='Individual Piece');
+  const looks=outfits.filter(o=>o.photo_type!=='Individual Piece');
+
   const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
   const inspoContext=inspo&&inspo.length>0?'\n\nStyle inspiration & tips:\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
   const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason').limit(50);
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0?`\n\nFeedback history:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
-  const wardrobeList=outfits.map((o,i)=>`${i+1}. [ID:${o.id}] [${o.photo_type||'Look'}/${o.occasion}/${o.weather||'?'}] ${o.description||'outfit'}`).join('\n');
-  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
+  // Build wardrobe list — pieces first (most useful for matching), then looks
+  const allItems=archiveOnlyState?pieces:outfits;
+  const wardrobeList=allItems.map((o,i)=>`${i+1}. [WARDROBE_ID:${o.id}] [${o.photo_type==='Individual Piece'?'PIECE':'LOOK'}/${o.occasion}/${o.weather||'?'}] ${o.description||'item'}`).join('\n');
+  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (WARDROBE_ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
+
+  const archiveInstruction=archiveOnlyState
+    ?`ARCHIVE ONLY MODE: You MUST use ONLY pieces from the wardrobe list above. Every piece must have a wardrobeId matching a WARDROBE_ID from the list. Do NOT suggest anything not in the list.`
+    :`Prefer pieces from the wardrobe list when they fit. Use the exact WARDROBE_ID when referencing an archive item. For pieces not in the archive, set wardrobeId to null and give a vivid visual description.`;
 
   const prompt=`Create TWO complete outfit options for:
 OCCASION: ${selectedOccasion}
 WEATHER: ${selectedWeatherStyle}
 ${extra?'NOTES: '+extra:''}
-${archiveOnlyState?'IMPORTANT: Only suggest pieces explicitly in the wardrobe archive below.':''}
+
+${archiveInstruction}
 ${anchorContext}
 
-WARDROBE (${outfits.length} items):
+WARDROBE (${allItems.length} items — use WARDROBE_ID exactly as shown):
 ${wardrobeList||'No wardrobe items yet'}
 ${inspoContext}
 ${fbContext}
 
 For each option suggest 5 pieces: Top, Bottom OR Dress (if one-piece), Shoes, Outerwear, Accessories.
-For pieces NOT in the archive (no wardrobeId): give a vivid visual description — color, fabric, silhouette, fit — so she can picture it exactly without a photo.
+CRITICAL: When using a wardrobe item, copy the WARDROBE_ID exactly into wardrobeId field. The name should describe the piece visually so she recognises it.
 Be direct. Only add a note when it's a useful tip. No flowery language.
 
 Respond ONLY in this JSON:
-{"options":[{"headline":"3-4 word title","colorStory":"One direct sentence","pieces":[{"category":"Top","name":"vivid description or archive piece name","note":"tip only if valuable else empty","wardrobeId":"id or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"One direct tip","lip":"Specific lip color","edge":"One edgy accent"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
+{"options":[{"headline":"3-4 word title","colorStory":"One direct sentence","pieces":[{"category":"Top","name":"piece description","note":"tip or empty","wardrobeId":"exact WARDROBE_ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"One direct tip","lip":"Specific lip color","edge":"One edgy accent"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
 
   try{
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -847,7 +860,10 @@ function renderOption(idx){
   if(!el)return;
 
   const piecesHtml=opt.pieces?.map((p,pi)=>{
-    const matched=p.wardrobeId?allOutfits.find(o=>o.id===p.wardrobeId):null;
+    // Match by wardrobeId OR by description similarity as fallback
+    const matched=p.wardrobeId
+      ?allOutfits.find(o=>o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim())
+      :null;
     const imgSrc=matched?(matched.image_data||matched.image_url):null;
     const safeId=`${idx}-${pi}`;
     const safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
