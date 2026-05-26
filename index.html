@@ -770,31 +770,45 @@ async function composeLookFromPiece(){
 }
 
 async function _doCompose(extra,anchorPiece){
-  // Fetch all pieces first, then broader set if not enough
   let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(60);
   outfits=outfits||[];
   window._lastOutfits=outfits;
 
-  // Separate individual pieces from full looks for the wardrobe list
   const pieces=outfits.filter(o=>o.photo_type==='Individual Piece');
   const looks=outfits.filter(o=>o.photo_type!=='Individual Piece');
 
   const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
-  const inspoContext=inspo&&inspo.length>0?'\n\nStyle inspiration & tips:\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
+  const inspoContext=inspo&&inspo.length>0?'\n\nSTYLE INSPIRATIONS (use to shape suggestions):\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
   const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason').limit(50);
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
-  const fbContext=fbData&&fbData.length>0?`\n\nFeedback history:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes with reasons: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
+  const fbContext=fbData&&fbData.length>0?`\n\nFEEDBACK HISTORY:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
-  // Build wardrobe list — pieces first (most useful for matching), then looks
-  const allItems=archiveOnlyState?pieces:outfits;
-  const wardrobeList=allItems.map((o,i)=>`${i+1}. [WARDROBE_ID:${o.id}] [${o.photo_type==='Individual Piece'?'PIECE':'LOOK'}/${o.occasion}/${o.weather||'?'}] ${o.description||'item'}`).join('\n');
-  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (WARDROBE_ID:${anchorPiece.id}) — build the entire outfit around this specific item.`:'';
+  // Build wardrobe list — full looks show their extracted pieces if available
+  const allItems=archiveOnlyState?outfits:outfits;
+
+  const piecesList=pieces.map(o=>{
+    const parts=o.description?.split(' | ')||[];
+    return `[WARDROBE_ID:${o.id}] PIECE | ${o.occasion}/${o.weather||'?'} | ${o.description||'item'}`;
+  }).join('\n');
+
+  const looksList=looks.map(o=>{
+    let parsed=null;
+    try{parsed=JSON.parse(o.description);}catch(e){}
+    if(parsed&&parsed.pieces){
+      // Rich structured look — list each visible piece with the look's ID
+      const piecesInLook=parsed.pieces.map(p=>`  → ${p.category}: ${p.description}`).join('\n');
+      return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${parsed.description||''}\n${piecesInLook}\n  Style: ${parsed.style_notes||''}`;
+    }
+    return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${o.description||'outfit'}`;
+  }).join('\n');
+
+  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (WARDROBE_ID:${anchorPiece.id}) — build the entire outfit around this.`:'';
 
   const archiveInstruction=archiveOnlyState
-    ?`ARCHIVE ONLY MODE: You MUST use ONLY pieces from the wardrobe list above. Every piece must have a wardrobeId matching a WARDROBE_ID from the list. Do NOT suggest anything not in the list.`
-    :`Prefer pieces from the wardrobe list when they fit. Use the exact WARDROBE_ID when referencing an archive item. For pieces not in the archive, set wardrobeId to null and give a vivid visual description.`;
+    ?`ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.`
+    :`PREFER archive items when they fit the occasion and weather. Reference them with their exact WARDROBE_ID. For FULL LOOK items you can suggest the whole look as one option, OR mix individual pieces from it with other archive pieces. For pieces not in archive, set wardrobeId null and describe vividly.`;
 
-  const prompt=`Create TWO complete outfit options for:
+  const prompt=`Create TWO complete outfit options for Isabella.
 OCCASION: ${selectedOccasion}
 WEATHER: ${selectedWeatherStyle}
 ${extra?'NOTES: '+extra:''}
@@ -802,17 +816,23 @@ ${extra?'NOTES: '+extra:''}
 ${archiveInstruction}
 ${anchorContext}
 
-WARDROBE (${allItems.length} items — use WARDROBE_ID exactly as shown):
-${wardrobeList||'No wardrobe items yet'}
+━━ INDIVIDUAL PIECES (${pieces.length}) ━━
+${piecesList||'None yet'}
+
+━━ FULL LOOKS & MIRROR PICS (${looks.length}) ━━
+${looksList||'None yet'}
 ${inspoContext}
 ${fbContext}
 
-For each option suggest 5 pieces: Top, Bottom OR Dress (if one-piece), Shoes, Outerwear, Accessories.
-CRITICAL: When using a wardrobe item, copy the WARDROBE_ID exactly into wardrobeId field. The name should describe the piece visually so she recognises it.
-Be direct. Only add a note when it's a useful tip. No flowery language.
+RULES:
+- You can mix: top from a FULL LOOK + bottom from PIECES (use same WARDROBE_ID for the look photo to display it)
+- You can suggest a FULL LOOK whole (all 5 slots reference same WARDROBE_ID)
+- For archive items: copy WARDROBE_ID exactly. Name = what the piece looks like so she recognises it.
+- For non-archive items: wardrobeId=null, vivid description (color, fabric, cut).
+- Be direct, no fluff.
 
-Respond ONLY in this JSON:
-{"options":[{"headline":"3-4 word title","colorStory":"One direct sentence","pieces":[{"category":"Top","name":"piece description","note":"tip or empty","wardrobeId":"exact WARDROBE_ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"One direct tip","lip":"Specific lip color","edge":"One edgy accent"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
+Respond ONLY in JSON:
+{"options":[{"headline":"3-4 word title","colorStory":"one sentence","isFullLook":false,"pieces":[{"category":"Top","name":"description","note":"","wardrobeId":"WARDROBE_ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"one tip","lip":"lip color","edge":"one accent"},{"headline":"...","colorStory":"...","isFullLook":false,"pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
 
   try{
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -859,21 +879,33 @@ function renderOption(idx){
   const el=document.getElementById('option-'+idx);
   if(!el)return;
 
+  // Detect if all pieces point to same full-look item → show hero photo
+  const usedIds=[...new Set(opt.pieces?.map(p=>p.wardrobeId).filter(Boolean))];
+  const heroLook=usedIds.length===1?allOutfits.find(o=>o.id===usedIds[0]&&o.photo_type!=='Individual Piece'):null;
+  const heroHtml=heroLook
+    ?`<div style="position:relative;margin-bottom:20px">
+        <img src="${heroLook.image_data||heroLook.image_url}" style="width:100%;max-height:420px;object-fit:cover;object-position:top;display:block;">
+        <div style="position:absolute;top:0;left:0;padding:6px 10px;background:rgba(0,0,0,0.75)"><span style="font-size:9px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;font-weight:700">From your archive</span></div>
+      </div>`
+    :'';
+
   const piecesHtml=opt.pieces?.map((p,pi)=>{
-    // Match by wardrobeId OR by description similarity as fallback
     const matched=p.wardrobeId
       ?allOutfits.find(o=>o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim())
       :null;
     const imgSrc=matched?(matched.image_data||matched.image_url):null;
+    const isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     const safeId=`${idx}-${pi}`;
-    const safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const safeName=p.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
     const photoHtml=imgSrc
-      ?`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}"></div>`
+      ?isFullLookRef&&heroLook
+        ?`<div class="piece-photo" style="background:#f5f5f5;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;letter-spacing:0.1em;color:#999;text-transform:uppercase;text-align:center;padding:8px">↑ See above</span></div>`
+        :`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}"></div>`
       :`<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>`;
     return `<div class="piece-card" id="card-${safeId}">
       ${photoHtml}
       <div class="piece-content">
-        <div class="piece-category">${p.category}</div>
+        <div class="piece-category">${p.category}${matched?'<span style="font-size:9px;letter-spacing:0.12em;color:#4a7a5a;margin-left:6px;font-weight:700">✓ yours</span>':''}</div>
         <div class="piece-name">${p.name}</div>
         ${p.note?`<div class="piece-note">${p.note}</div>`:''}
         <div class="piece-feedback">
@@ -892,7 +924,7 @@ function renderOption(idx){
     </div>`;
   }).join('')||'';
 
-  el.innerHTML=piecesHtml+`<div class="stylist-box">
+  el.innerHTML=heroHtml+piecesHtml+`<div class="stylist-box">
     <div style="font-size:15px;color:#444;font-style:italic">${opt.stylistNote||''}</div>
     <div class="notes-grid">
       <div><div class="notes-key">Lip</div><div class="notes-val">${opt.lip||''}</div></div>
@@ -900,7 +932,6 @@ function renderOption(idx){
     </div>
   </div>`;
 }
-
 function showDislikeReason(safeId,pieceName){document.getElementById(`reason-box-${safeId}`).style.display='block';document.getElementById(`fb-${safeId}-dislike`).classList.add('disliked');setTimeout(()=>document.getElementById(`reason-input-${safeId}`).focus(),100);}
 function hideDislikeReason(safeId){document.getElementById(`reason-box-${safeId}`).style.display='none';document.getElementById(`fb-${safeId}-dislike`).classList.remove('disliked');}
 async function saveDislikeWithReason(safeId,pieceName){
@@ -1028,16 +1059,41 @@ async function compressImage(dataUrl,maxWidth=800){
   });
 }
 
-async function detectDescription(imageData){
+async function analyzePhoto(imageData, isPiece, pieceName, categoryTag){
   try{
     const b64=imageData.startsWith('data:')?imageData.split(',')[1]:imageData;
+    const system=isPiece
+      ?'Fashion analyst. Respond ONLY in JSON: {"description":"one vivid sentence: color, fabric, silhouette","category":"Top/Bottom/Dress/Shoes/Outerwear/Accessory/Bag/Jewellery","colors":["color1","color2"]}'
+      :'Fashion analyst. Look at this outfit photo. Respond ONLY in JSON: {"description":"overall look in one sentence","pieces":[{"category":"Top","description":"color+fabric+silhouette"},{"category":"Bottom","description":"..."}],"colors":["dominant colors"],"silhouette":"e.g. fitted top wide bottom","style_notes":"one sentence about her style here"}';
+    const userMsg=isPiece
+      ?`Analyze this individual clothing item.${pieceName?' Item name: '+pieceName:''}`
+      :'Analyze this outfit photo. List every piece you can see.';
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:60,
-        system:'Fashion analyst. Respond ONLY with a brief 8-word outfit or clothing item description. Plain text only.',
-        messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Describe this in 8 words.'}]}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:300,system,
+        messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:userMsg}]}]})});
     const data=await res.json();
-    return data.content.map(i=>i.text||'').join('').trim();
-  }catch(e){return '';}
+    const raw=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(raw);
+    if(isPiece){
+      // For pieces: return flat description string folding in name+category
+      const cat=categoryTag||parsed.category||'';
+      return [pieceName,cat,parsed.description].filter(Boolean).join(' | ');
+    } else {
+      // For full looks: return rich JSON string so AI can use it later
+      return JSON.stringify(parsed);
+    }
+  }catch(e){
+    // Fallback to simple description
+    try{
+      const b64=imageData.startsWith('data:')?imageData.split(',')[1]:imageData;
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:60,
+          system:'Fashion analyst. Respond ONLY with a brief outfit description. Plain text.',
+          messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Describe this outfit in 10 words.'}]}]})});
+      const d=await res.json();
+      return d.content.map(i=>i.text||'').join('').trim();
+    }catch(e2){return '';}
+  }
 }
 
 async function saveToArchive(){
@@ -1049,11 +1105,8 @@ async function saveToArchive(){
   for(const item of queue){
     try{
       const compressed=await compressImage(item.img);
-      const description=await detectDescription(compressed);
-      // Fold piece name + category into description for pieces
-      const fullDesc=isPieces
-        ?[pieceName,selectedCategoryTag,description].filter(Boolean).join(' | ')
-        :description;
+      btn.textContent=`Analysing ${queue.indexOf(item)+1}/${queue.length}...`;
+      const fullDesc=await analyzePhoto(compressed,isPieces,pieceName,selectedCategoryTag);
       const {error}=await sb.from('outfits').insert({
         occasion:selectedOccasionTag,weather:selectedWeatherTag,
         photo_type:isPieces?'Individual Piece':'Full Outfit',
