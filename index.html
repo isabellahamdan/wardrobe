@@ -44,6 +44,55 @@ async function saveEditItem(){
   if(!error){closeEditItem();loadGallery();}
   else{alert('Save failed: '+error.message);}
 }
+
+// ── INFLUENCERS ───────────────────────────────────────────
+function showAddInfluencer(){ document.getElementById('add-influencer-form').style.display='block'; document.getElementById('influencer-handle').focus(); }
+function hideAddInfluencer(){ document.getElementById('add-influencer-form').style.display='none'; document.getElementById('influencer-handle').value=''; document.getElementById('influencer-name').value=''; }
+
+async function saveInfluencer(){
+  const handle=document.getElementById('influencer-handle').value.trim().replace(/^@/,'');
+  const name=document.getElementById('influencer-name').value.trim();
+  if(!handle) return;
+  // Store as inspiration with type='influencer'
+  const {error}=await sb.from('inspiration').insert({
+    type:'text',
+    text_content:'INFLUENCER:@'+handle+(name?' | '+name:''),
+    ai_summary:'Style inspiration: @'+handle+(name?' — '+name:'')
+  });
+  if(!error){ hideAddInfluencer(); loadInfluencers(); }
+  else alert('Save failed: '+error.message);
+}
+
+async function loadInfluencers(){
+  const {data}=await sb.from('inspiration').select('id,text_content,ai_summary').order('created_at',{ascending:false});
+  const influencers=(data||[]).filter(i=>(i.text_content||'').startsWith('INFLUENCER:'));
+  const grid=document.getElementById('influencers-grid');
+  const empty=document.getElementById('influencers-empty');
+  if(!influencers.length){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML=influencers.map(inf=>{
+    const parts=(inf.text_content||'').replace('INFLUENCER:','').split(' | ');
+    const handle=parts[0]||'';
+    const note=parts[1]||'';
+    const platform=handle.startsWith('@')?handle.substring(1):handle;
+    const igUrl=`https://www.instagram.com/${platform.replace('@','')}`;
+    const ttUrl=`https://www.tiktok.com/@${platform.replace('@','')}`;
+    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid #e0e0e0;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="color:#fff;font-size:16px;font-weight:700;font-style:italic">@</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:700;color:#000">${handle}</div>
+        ${note?`<div style="font-size:13px;color:#888;font-style:italic;margin-top:2px">${note}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <a href="${igUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">Instagram ↗</a>
+          <a href="${ttUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">TikTok ↗</a>
+        </div>
+      </div>
+      <button onclick="deleteInspo('${inf.id}')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>
+    </div>`;
+  }).join('');
+}
 </script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
@@ -524,6 +573,27 @@ async function saveEditItem(){
 
       <!-- GALLERY -->
       <div id="inspo-gallery">
+        <!-- Influencers section -->
+        <div id="influencers-section" style="margin-bottom:28px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-label" style="margin-bottom:0">Influencers</div>
+            <button onclick="showAddInfluencer()" style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;border:1px solid #000;background:#fff;color:#000;padding:7px 14px;cursor:pointer;font-family:inherit;">+ Add</button>
+          </div>
+          <div id="influencers-grid" style="display:flex;flex-direction:column;gap:2px"></div>
+          <div id="influencers-empty" style="font-size:14px;color:#999;font-style:italic;padding:10px 0;display:none">No influencers added yet.</div>
+          <!-- Add influencer form -->
+          <div id="add-influencer-form" style="display:none;border:1px solid #e0e0e0;border-top:2px solid #000;padding:18px;margin-top:8px">
+            <div class="section-label">Instagram or TikTok handle</div>
+            <input type="text" id="influencer-handle" placeholder="@username" style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:18px;font-family:inherit;font-weight:700;margin-bottom:14px;background:transparent;color:#000;">
+            <div class="section-label">Name / notes (optional)</div>
+            <input type="text" id="influencer-name" placeholder="e.g. Sofia Coelho — minimal chic" style="width:100%;border:none;border-bottom:1px solid #e0e0e0;padding:10px 0;font-size:15px;font-family:inherit;margin-bottom:18px;background:transparent;color:#000;">
+            <div style="display:flex;gap:2px">
+              <button onclick="hideAddInfluencer()" style="padding:14px 18px;background:transparent;border:1px solid #000;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Cancel</button>
+              <button onclick="saveInfluencer()" style="flex:1;padding:14px;background:#000;border:none;color:#fff;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Save</button>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid #e0e0e0;margin-bottom:24px"></div>
         <div id="inspo-grid" class="inspiration-grid"></div>
         <div id="inspo-empty" class="empty-state" style="display:none"><div class="empty-text">No inspiration saved yet.</div><button class="btn-ghost" onclick="switchInspo('add')">Add Your First</button></div>
         <div id="inspo-loading" class="loading-dot" style="display:none">Loading...</div>
@@ -679,13 +749,40 @@ async function loadPiecePicker(){
     container.innerHTML='<div class="empty-state"><div class="empty-text">No individual pieces yet.</div><p style="font-size:14px;color:#999;font-style:italic;">Add pieces to your archive first — go to Archive → + Add → Pieces.</p></div>';
     return;
   }
-  container.innerHTML=`<div class="piece-picker-grid">${data.map(p=>`
-    <div class="piece-picker-item" id="picker-${p.id}" onclick="selectPiece('${p.id}')">
-      <img class="piece-picker-img" src="${p.image_data||p.image_url}" onerror="this.style.display='none'">
-      <div class="piece-picker-name">${p.description?.split(' | ')[0]||'Piece'}</div>
-      <div class="piece-picker-check">✓</div>
-    </div>`).join('')}</div>`;
   window._allPieces=data;
+  window._pickerFilter='All';
+  renderPiecePicker();
+}
+
+function renderPiecePicker(){
+  const data=window._allPieces||[];
+  const filter=window._pickerFilter||'All';
+  // Derive categories from descriptions (stored as "Name | Category | ...")
+  const cats=['All','Top','Bottom','Dress','Shoes','Outerwear','Accessory','Bag','Jewellery'];
+  const filtered=filter==='All'?data:data.filter(p=>{
+    const parts=(p.description||'').split(' | ');
+    return parts.some(pt=>pt.trim()===filter);
+  });
+  const container=document.getElementById('piece-picker-container');
+  container.innerHTML=`
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">
+      ${cats.map(c=>`<button onclick="setPiecerFilter('${c}',this)" style="padding:7px 12px;border:1px solid ${c===filter?'#000':'#e0e0e0'};background:${c===filter?'#000':'#fff'};color:${c===filter?'#fff':'#666'};font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">${c}</button>`).join('')}
+    </div>
+    ${filtered.length===0
+      ?'<div style="padding:20px;text-align:center;font-size:14px;color:#999;font-style:italic">No pieces in this category yet.</div>'
+      :`<div class="piece-picker-grid">${filtered.map(p=>`
+          <div class="piece-picker-item" id="picker-${p.id}" onclick="selectPiece('${p.id}')">
+            <img class="piece-picker-img" src="${p.image_data||p.image_url}" onerror="this.style.display='none'">
+            <div class="piece-picker-name">${p.description?.split(' | ')[0]||'Piece'}</div>
+            <div class="piece-picker-check">✓</div>
+          </div>`).join('')}</div>`}`;
+}
+
+function setPiecerFilter(cat,btn){
+  window._pickerFilter=cat;
+  renderPiecePicker();
+  // Re-highlight selected piece if still visible
+  if(selectedPieceId) document.getElementById('picker-'+selectedPieceId)?.classList.add('selected');
 }
 
 function selectPiece(id){
@@ -778,7 +875,10 @@ async function _doCompose(extra,anchorPiece){
   const looks=outfits.filter(o=>o.photo_type!=='Individual Piece');
 
   const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
-  const inspoContext=inspo&&inspo.length>0?'\n\nSTYLE INSPIRATIONS (use to shape suggestions):\n'+inspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'';
+  const regularInspo=(inspo||[]).filter(i=>!(i.text_content||'').startsWith('INFLUENCER:'));
+  const influencerInspo=(inspo||[]).filter(i=>(i.text_content||'').startsWith('INFLUENCER:'));
+  const influencerContext=influencerInspo.length>0?'\n\nSTYLE INFLUENCERS (embody their aesthetic fully — these are her style icons):\n'+influencerInspo.map(i=>{const parts=(i.text_content||'').replace('INFLUENCER:','').split(' | ');return parts[0]+(parts[1]?' — '+parts[1]:'');}).join('\n'):'';
+  const inspoContext=(regularInspo.length>0?'\n\nSTYLE INSPIRATIONS:\n'+regularInspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'')+influencerContext;
   const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason').limit(50);
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0?`\n\nFEEDBACK HISTORY:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
@@ -825,11 +925,12 @@ ${inspoContext}
 ${fbContext}
 
 RULES:
-- You can mix: top from a FULL LOOK + bottom from PIECES (use same WARDROBE_ID for the look photo to display it)
-- You can suggest a FULL LOOK whole (all 5 slots reference same WARDROBE_ID)
-- For archive items: copy WARDROBE_ID exactly. Name = what the piece looks like so she recognises it.
+- MIXING IS PREFERRED: use different WARDROBE_IDs across pieces. e.g. top from one mirror pic + trousers from a PIECE + shoes from another pic.
+- Only use the same WARDROBE_ID for all slots if you are intentionally suggesting "wear this exact look again".
+- If using a FULL LOOK photo for one piece (e.g. the top visible in it), set wardrobeId to that look's ID and describe ONLY that specific piece (e.g. "Fuchsia peplum top from your work mirror pic").
+- For archive items: copy WARDROBE_ID exactly. Name = describe the specific piece, not the whole outfit.
 - For non-archive items: wardrobeId=null, vivid description (color, fabric, cut).
-- Be direct, no fluff.
+- Be direct, no fluff. Never name a piece "Work outfit" — always describe what it actually looks like.
 
 Respond ONLY in JSON:
 {"options":[{"headline":"3-4 word title","colorStory":"one sentence","isFullLook":false,"pieces":[{"category":"Top","name":"description","note":"","wardrobeId":"WARDROBE_ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"one tip","lip":"lip color","edge":"one accent"},{"headline":"...","colorStory":"...","isFullLook":false,"pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
@@ -897,9 +998,11 @@ function renderOption(idx){
     const isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     const safeId=`${idx}-${pi}`;
     const safeName=p.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
-    // Always show the actual photo — full look photo or individual piece
+    // Individual piece → show its photo. Full look ref → show once at top, dim indicator in card.
     const photoHtml=imgSrc
-      ?`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>`
+      ?isFullLookRef
+        ?`<div class="piece-photo" style="background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px"><img src="${imgSrc}" style="width:90px;height:112px;object-fit:cover;object-position:top;opacity:0.35;display:block;position:absolute;"></div>`
+        :`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>`
       :`<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>`;
     return `<div class="piece-card" id="card-${safeId}">
       ${photoHtml}
@@ -1159,8 +1262,7 @@ async function loadGallery(){
           <img class="gallery-img" src="${item.image_data||item.image_url}" loading="lazy" onerror="this.style.display='none'">
           ${isPiecesView&&item.description
             ?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3">${item.description?.split(' | ')[0]||''}</div>`
-            :`<div class="gallery-tag" style="background:${occColors[item.occasion]||'#222'}"><span>${item.occasion||''}</span></div>
-               ${item.weather?`<div class="gallery-tag bottom" style="background:${wxColors[item.weather]||'#555'}"><span>${item.weather}</span></div>`:''}`}
+            :''}
           <button class="delete-btn" style="right:32px" onclick="openEditItem('${item.id}','${item.occasion||''}','${item.weather||''}','${(item.description||'').replace(/'/g,"\\'")}')">✏️</button>
           <button class="delete-btn" onclick="deleteItem('${item.id}')">✕</button>
         </div>
@@ -1305,10 +1407,13 @@ async function saveInspiration(){
   btn.textContent='Save Inspiration';
 }
 async function loadInspiration(){
+  loadInfluencers();
   document.getElementById('inspo-loading').style.display='block';
   document.getElementById('inspo-grid').style.display='none';
   document.getElementById('inspo-empty').style.display='none';
-  const {data, error}=await sb.from('inspiration').select('*').order('created_at',{ascending:false});
+  const {data:allData, error}=await sb.from('inspiration').select('*').order('created_at',{ascending:false});
+  // Exclude influencer entries from the regular grid
+  const data=allData?(allData.filter(i=>!(i.text_content||'').startsWith('INFLUENCER:'))):null;
   document.getElementById('inspo-loading').style.display='none';
   if(error){ console.error('loadInspiration error:',error); document.getElementById('inspo-empty').style.display='block'; return; }
   if(!data||data.length===0){ document.getElementById('inspo-empty').style.display='block'; return; }
@@ -1411,6 +1516,55 @@ async function saveEditItem(){
   const {error}=await sb.from('outfits').update({occasion:_editOcc,weather:_editWx,description:desc||null}).eq('id',_editId);
   if(!error){closeEditItem();loadGallery();}
   else{alert('Save failed: '+error.message);}
+}
+
+// ── INFLUENCERS ───────────────────────────────────────────
+function showAddInfluencer(){ document.getElementById('add-influencer-form').style.display='block'; document.getElementById('influencer-handle').focus(); }
+function hideAddInfluencer(){ document.getElementById('add-influencer-form').style.display='none'; document.getElementById('influencer-handle').value=''; document.getElementById('influencer-name').value=''; }
+
+async function saveInfluencer(){
+  const handle=document.getElementById('influencer-handle').value.trim().replace(/^@/,'');
+  const name=document.getElementById('influencer-name').value.trim();
+  if(!handle) return;
+  // Store as inspiration with type='influencer'
+  const {error}=await sb.from('inspiration').insert({
+    type:'text',
+    text_content:'INFLUENCER:@'+handle+(name?' | '+name:''),
+    ai_summary:'Style inspiration: @'+handle+(name?' — '+name:'')
+  });
+  if(!error){ hideAddInfluencer(); loadInfluencers(); }
+  else alert('Save failed: '+error.message);
+}
+
+async function loadInfluencers(){
+  const {data}=await sb.from('inspiration').select('id,text_content,ai_summary').order('created_at',{ascending:false});
+  const influencers=(data||[]).filter(i=>(i.text_content||'').startsWith('INFLUENCER:'));
+  const grid=document.getElementById('influencers-grid');
+  const empty=document.getElementById('influencers-empty');
+  if(!influencers.length){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML=influencers.map(inf=>{
+    const parts=(inf.text_content||'').replace('INFLUENCER:','').split(' | ');
+    const handle=parts[0]||'';
+    const note=parts[1]||'';
+    const platform=handle.startsWith('@')?handle.substring(1):handle;
+    const igUrl=`https://www.instagram.com/${platform.replace('@','')}`;
+    const ttUrl=`https://www.tiktok.com/@${platform.replace('@','')}`;
+    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid #e0e0e0;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="color:#fff;font-size:16px;font-weight:700;font-style:italic">@</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:700;color:#000">${handle}</div>
+        ${note?`<div style="font-size:13px;color:#888;font-style:italic;margin-top:2px">${note}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <a href="${igUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">Instagram ↗</a>
+          <a href="${ttUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">TikTok ↗</a>
+        </div>
+      </div>
+      <button onclick="deleteInspo('${inf.id}')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>
+    </div>`;
+  }).join('');
 }
 </script>
 
