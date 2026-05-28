@@ -965,7 +965,8 @@ async function _doCompose(extra,anchorPiece){
     }
     // Plain text description — still mine it for pieces
     var desc=o.description||'outfit';
-    return '[WARDROBE_ID:'+o.id+'] FULL LOOK (MINE FOR PIECES) | '+o.occasion+'/'+(o.weather||'?')+' | '+desc;
+    var hasSentImg=looksWithImages.some(function(l){return l.id===o.id;});
+    return '[WARDROBE_ID:'+o.id+'] FULL LOOK'+(hasSentImg?' (IMAGE SENT — you can see every piece)':' (MINE FOR PIECES)')+' | '+o.occasion+'/'+(o.weather||'?')+' | '+desc;
   }).join('\n');
 
   const anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') — build the entire outfit around this.':'';
@@ -1002,8 +1003,25 @@ Respond ONLY in JSON:
 {"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional styling tip","wardrobeId":"ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null}],"stylistNote":"one actionable tip","lip":"specific lip color","edge":"one detail that elevates the look"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
 
   try{
+    // Build message content — include images of full looks so AI can actually see the pieces
+    var msgContent=[];
+    // Add up to 6 full look images so AI can visually identify pieces
+    var looksWithImages=looks.filter(function(o){return o.image_data||o.image_url;}).slice(0,6);
+    if(looksWithImages.length>0){
+      msgContent.push({type:'text',text:'Here are her full look / mirror photos. Study each one carefully — identify every piece visible (top, bottom, shoes, outerwear, accessories) so you can reference them individually by their WARDROBE_ID:\n'+looksWithImages.map(function(o){return 'WARDROBE_ID:'+o.id+' ('+o.occasion+'/'+o.weather+')';}).join('\n')});
+      looksWithImages.forEach(function(o){
+        var imgData=o.image_data||o.image_url||'';
+        if(imgData.startsWith('data:')){
+          var b64=imgData.split(',')[1];
+          msgContent.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
+        }
+      });
+      msgContent.push({type:'text',text:prompt});
+    } else {
+      msgContent=prompt;
+    }
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:msgContent}]})});
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||JSON.stringify(data));
     if(!data.content) throw new Error('No content: '+JSON.stringify(data));
