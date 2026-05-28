@@ -909,6 +909,11 @@ async function composeLook(){
   const btn=document.getElementById('compose-btn');
   btn.textContent='Styling...';btn.disabled=true;
   document.getElementById('compose-error').style.display='none';
+  window._composeStart=Date.now();
+  window._composeTimer=setInterval(function(){
+    var secs=Math.round((Date.now()-window._composeStart)/1000);
+    btn.textContent='Styling... '+secs+'s';
+  },1000);
   await _doCompose(extra,null);
 }
 
@@ -918,12 +923,24 @@ async function composeLookFromPiece(){
   const btn=document.getElementById('compose-piece-btn');
   btn.textContent='Styling...';btn.disabled=true;
   document.getElementById('compose-piece-error').style.display='none';
+  window._composeStart=Date.now();
+  window._composeTimer=setInterval(function(){
+    var secs=Math.round((Date.now()-window._composeStart)/1000);
+    btn.textContent='Styling... '+secs+'s';
+  },1000);
   await _doCompose(extra,selectedPieceData);
 }
 
 async function _doCompose(extra,anchorPiece){
-  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(60);
-  outfits=outfits||[];
+  // Fetch metadata only first (fast - no heavy image_data)
+  let {data:outfitsMeta}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(40);
+  outfitsMeta=outfitsMeta||[];
+  // Fetch image_data separately for display (needed for renderOption)
+  let {data:outfitImages}=await sb.from('outfits').select('id,image_data').order('created_at',{ascending:false}).limit(40);
+  var imageMap={};
+  (outfitImages||[]).forEach(function(o){if(o.image_data)imageMap[o.id]=o.image_data;});
+  // Merge: metadata + image_data
+  var outfits=outfitsMeta.map(function(o){return Object.assign({},o,{image_data:imageMap[o.id]||null});});
   window._lastOutfits=outfits;
 
   const pieces=outfits.filter(o=>o.photo_type==='Individual Piece');
@@ -960,13 +977,14 @@ async function _doCompose(extra,anchorPiece){
     var parsed=null;
     try{parsed=JSON.parse(o.description);}catch(e){}
     if(parsed&&parsed.pieces){
-      var piecesInLook=parsed.pieces.map(function(p){return '  → '+p.category+': '+p.description;}).join('\n');
-      return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(parsed.description||'')+'\n'+piecesInLook+'\n  Style: '+(parsed.style_notes||'');
+      // Filter out empty pieces
+      var visiblePieces=parsed.pieces.filter(function(p){return p.description&&p.description.length>3&&p.description!=='only if visible';});
+      var piecesInLook=visiblePieces.map(function(p){return '  → '+p.category+' [use WARDROBE_ID:'+o.id+']: '+p.description;}).join('\n');
+      return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+'\n'+piecesInLook+'\n  Overall: '+(parsed.description||'')+'  Style: '+(parsed.style_notes||'');
     }
-    // Plain text description — still mine it for pieces
+    // Plain text description — parse what we can
     var desc=o.description||'outfit';
-    var hasSentImg=looksWithImages.some(function(l){return l.id===o.id;});
-    return '[WARDROBE_ID:'+o.id+'] FULL LOOK'+(hasSentImg?' (IMAGE SENT — you can see every piece)':' (MINE FOR PIECES)')+' | '+o.occasion+'/'+(o.weather||'?')+' | '+desc;
+    return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | USE THIS AS SOURCE — extract any piece you see mentioned: '+desc;
   }).join('\n');
 
   const anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') — build the entire outfit around this.':'';
@@ -1003,37 +1021,26 @@ Respond ONLY in JSON:
 {"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional styling tip","wardrobeId":"ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null}],"stylistNote":"one actionable tip","lip":"specific lip color","edge":"one detail that elevates the look"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
 
   try{
-    // Build message content — include images of full looks so AI can actually see the pieces
-    var msgContent=[];
-    // Add up to 6 full look images so AI can visually identify pieces
-    var looksWithImages=looks.filter(function(o){return o.image_data||o.image_url;}).slice(0,6);
-    if(looksWithImages.length>0){
-      msgContent.push({type:'text',text:'Here are her full look / mirror photos. Study each one carefully — identify every piece visible (top, bottom, shoes, outerwear, accessories) so you can reference them individually by their WARDROBE_ID:\n'+looksWithImages.map(function(o){return 'WARDROBE_ID:'+o.id+' ('+o.occasion+'/'+o.weather+')';}).join('\n')});
-      looksWithImages.forEach(function(o){
-        var imgData=o.image_data||o.image_url||'';
-        if(imgData.startsWith('data:')){
-          var b64=imgData.split(',')[1];
-          msgContent.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
-        }
-      });
-      msgContent.push({type:'text',text:prompt});
-    } else {
-      msgContent=prompt;
-    }
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:msgContent}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||JSON.stringify(data));
     if(!data.content) throw new Error('No content: '+JSON.stringify(data));
-    currentOptions=JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim()).options||[];
+    currentOptions=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim()).options||[];
     // Track used IDs for variety
-    const usedIds=currentOptions.flatMap(o=>(o.pieces||[]).map(p=>p.wardrobeId).filter(Boolean));
+    const usedIds=currentOptions.flatMap(function(o){return (o.pieces||[]).map(function(p){return p.wardrobeId;}).filter(Boolean);});
     markUsed([...new Set(usedIds)]);
+    // Clear timer + log elapsed
+    if(window._composeTimer){clearInterval(window._composeTimer);window._composeTimer=null;}
+    var elapsed=Math.round((Date.now()-(window._composeStart||Date.now()))/1000);
+    console.log('Style Me: '+elapsed+'s');
+    if(elapsed>25){console.warn('Slow ('+elapsed+'s) — consider reducing limit or tokens');}
     showResult(anchorPiece);
   }catch(e){
     const errId=anchorPiece?'compose-piece-error':'compose-error';
     const errEl=document.getElementById(errId);
     errEl.textContent='Error: '+(e.message||JSON.stringify(e));errEl.style.display='block';
+    if(window._composeTimer){clearInterval(window._composeTimer);window._composeTimer=null;}
     const btnId=anchorPiece?'compose-piece-btn':'compose-btn';
     const b=document.getElementById(btnId);b.disabled=false;b.textContent='Style Me';
   }
@@ -1084,11 +1091,11 @@ function renderOption(idx){
     const isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     const safeId=`${idx}-${pi}`;
     const safeName=p.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
-    const photoHtml=imgSrc
+    var photoHtml=imgSrc
       ?isFullLookRef
-        ?`<div class="piece-photo" style="background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px"><img src="${imgSrc}" style="width:90px;height:112px;object-fit:cover;object-position:top;opacity:0.35;display:block;position:absolute;"></div>`
-        :`<div class="piece-photo"><img src="${imgSrc}" alt="${p.name}" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>`
-      :`<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>`;
+        ?'<div class="piece-photo" style="position:relative;overflow:hidden;"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.72);padding:3px 4px;font-size:8px;letter-spacing:0.08em;color:#fff;text-transform:uppercase;font-weight:700;text-align:center;">'+p.category+' from look</div></div>'
+        :'<div class="piece-photo"><img src="'+imgSrc+'" alt="'+p.name+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>'
+      :'<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>';
     return `<div class="piece-card" id="card-${safeId}">
       ${photoHtml}
       <div class="piece-content">
@@ -1309,7 +1316,7 @@ async function analyzePhoto(imageData, isPiece, pieceName, categoryTag){
     const b64=imageData.startsWith('data:')?imageData.split(',')[1]:imageData;
     const system=isPiece
       ?'Fashion analyst. Respond ONLY in JSON: {"description":"one vivid sentence: color, fabric, silhouette","category":"Top/Bottom/Dress/Shoes/Outerwear/Accessory/Bag/Jewellery","colors":["color1","color2"]}'
-      :'Fashion analyst. Look at this outfit photo. Respond ONLY in JSON: {"description":"overall look in one sentence","pieces":[{"category":"Top","description":"color+fabric+silhouette"},{"category":"Bottom","description":"..."}],"colors":["dominant colors"],"silhouette":"e.g. fitted top wide bottom","style_notes":"one sentence about her style here"}';
+      :'Fashion analyst. Look at this outfit photo carefully. Respond ONLY in JSON: {"description":"overall look in one sentence","pieces":[{"category":"Top","description":"exact color, fabric, and cut — e.g. white linen relaxed button-down shirt"},{"category":"Bottom","description":"exact color, fabric, and cut — e.g. dark navy wide-leg trousers"},{"category":"Shoes","description":"e.g. black leather knee-high boots"},{"category":"Outerwear","description":"only if visible"},{"category":"Accessories","description":"only if visible"}],"colors":["dominant colors"],"silhouette":"e.g. fitted top wide bottom","style_notes":"one sentence about her style here"}. Only include pieces that are clearly visible. Be very specific about each piece so it can be suggested independently.';
     const userMsg=isPiece
       ?`Analyze this individual clothing item.${pieceName?' Item name: '+pieceName:''}`
       :'Analyze this outfit photo. List every piece you can see.';
@@ -1935,7 +1942,7 @@ async function planTravel(){
   btn.textContent='Planning your wardrobe...';
 
   // Fetch wardrobe
-  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(80);
+  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(40);
   outfits=outfits||[];
   const pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});
   const looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
