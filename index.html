@@ -247,6 +247,7 @@
         <button class="tab active" onclick="switchTab('stylist',this)">Style Me</button>
         <button class="tab" onclick="switchTab('wardrobe',this)" id="archive-tab">Archive</button>
         <button class="tab" onclick="switchTab('inspiration',this)" id="inspiration-tab">Inspiration</button>
+        <button class="tab" onclick="switchTab('travel',this)" id="travel-tab">✈ Travel</button>
       </div>
     </div>
   </div>
@@ -394,7 +395,8 @@
 
       <!-- GALLERY -->
       <div id="wardrobe-gallery">
-        <div style="margin-bottom:16px">
+        <!-- LOOKS filters: occasion + weather -->
+        <div id="looks-filters" style="margin-bottom:16px">
           <div class="section-label" style="margin-bottom:8px">Occasion</div>
           <div class="filter-row">
             <button class="filter-btn active" onclick="filterBy('occasion','All',this)">All</button>
@@ -410,6 +412,21 @@
             <button class="filter-btn" onclick="filterBy('weather','Mild',this)">Mild</button>
             <button class="filter-btn" onclick="filterBy('weather','Cold/Rain',this)">Cold/Rain</button>
             <button class="filter-btn" onclick="filterBy('weather','Winter',this)">Winter</button>
+          </div>
+        </div>
+        <!-- PIECES filters: category -->
+        <div id="pieces-filters" style="display:none;margin-bottom:16px">
+          <div class="section-label" style="margin-bottom:8px">Category</div>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="filterBy('category','All',this)">All</button>
+            <button class="filter-btn" onclick="filterBy('category','Top',this)">Top</button>
+            <button class="filter-btn" onclick="filterBy('category','Bottom',this)">Bottom</button>
+            <button class="filter-btn" onclick="filterBy('category','Dress',this)">Dress</button>
+            <button class="filter-btn" onclick="filterBy('category','Shoes',this)">Shoes</button>
+            <button class="filter-btn" onclick="filterBy('category','Outerwear',this)">Outerwear</button>
+            <button class="filter-btn" onclick="filterBy('category','Accessory',this)">Accessory</button>
+            <button class="filter-btn" onclick="filterBy('category','Bag',this)">Bag</button>
+            <button class="filter-btn" onclick="filterBy('category','Jewellery',this)">Jewellery</button>
           </div>
         </div>
         <div id="gallery-grid" class="gallery-grid"></div>
@@ -489,25 +506,11 @@
 
       <!-- GALLERY -->
       <div id="inspo-gallery">
-        <!-- Influencers section -->
+        <!-- Influencers list (view only) -->
         <div id="influencers-section" style="margin-bottom:28px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="section-label" style="margin-bottom:0">Influencers</div>
-            <button onclick="showAddInfluencer()" style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;border:1px solid #000;background:#fff;color:#000;padding:7px 14px;cursor:pointer;font-family:inherit;">+ Add</button>
-          </div>
+          <div class="section-label" style="margin-bottom:12px">Influencers</div>
           <div id="influencers-grid" style="display:flex;flex-direction:column;gap:2px"></div>
           <div id="influencers-empty" style="font-size:14px;color:#999;font-style:italic;padding:10px 0;display:none">No influencers added yet.</div>
-          <!-- Add influencer form -->
-          <div id="add-influencer-form" style="display:none;border:1px solid #e0e0e0;border-top:2px solid #000;padding:18px;margin-top:8px">
-            <div class="section-label">Instagram or TikTok handle</div>
-            <input type="text" id="influencer-handle" placeholder="@username" style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:18px;font-family:inherit;font-weight:700;margin-bottom:14px;background:transparent;color:#000;">
-            <div class="section-label">Name / notes (optional)</div>
-            <input type="text" id="influencer-name" placeholder="e.g. Sofia Coelho — minimal chic" style="width:100%;border:none;border-bottom:1px solid #e0e0e0;padding:10px 0;font-size:15px;font-family:inherit;margin-bottom:18px;background:transparent;color:#000;">
-            <div style="display:flex;gap:2px">
-              <button onclick="hideAddInfluencer()" style="padding:14px 18px;background:transparent;border:1px solid #000;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Cancel</button>
-              <button onclick="saveInfluencer()" style="flex:1;padding:14px;background:#000;border:none;color:#fff;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Save</button>
-            </div>
-          </div>
         </div>
         <div style="border-top:1px solid #e0e0e0;margin-bottom:24px"></div>
         <div id="inspo-grid" class="inspiration-grid"></div>
@@ -520,6 +523,31 @@
         <div id="inspo-feedback" style="display:none" class="feedback-msg"></div>
         <div id="shared-content-preview" style="display:none;margin-bottom:20px"></div>
         <input type="file" id="inspo-file-input" accept="image/*" multiple style="display:none" onchange="handleInspoFiles(this.files)">
+
+        <!-- Influencer add form -->
+        <div style="margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid #e0e0e0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div class="section-label" style="margin-bottom:0">Add Influencer</div>
+          </div>
+          <div id="add-influencer-form">
+            <div class="section-label">Paste profile URL or share from Instagram/TikTok</div>
+            <input type="url" id="influencer-url-input" placeholder="https://www.instagram.com/username/"
+              oninput="extractInfluencerHandle(this.value)"
+              style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:16px;font-family:inherit;font-weight:400;margin-bottom:6px;background:transparent;color:#000;">
+            <div style="font-size:12px;color:#999;font-style:italic;margin-bottom:14px">Paste any Instagram or TikTok URL — profile, post, or reel</div>
+            <!-- Auto-extracted handle preview -->
+            <div id="influencer-handle-preview" style="display:none;padding:12px 14px;background:#f5f5f5;border-left:3px solid #000;margin-bottom:14px">
+              <div style="font-size:11px;letter-spacing:0.25em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:4px">Detected</div>
+              <div id="influencer-handle-text" style="font-size:18px;font-weight:700;color:#000"></div>
+            </div>
+            <!-- Hidden actual handle value -->
+            <input type="hidden" id="influencer-handle">
+            <div class="section-label">Name / notes (optional)</div>
+            <input type="text" id="influencer-name" placeholder="e.g. Sofia Coelho — minimal chic" style="width:100%;border:none;border-bottom:1px solid #e0e0e0;padding:10px 0;font-size:15px;font-family:inherit;margin-bottom:18px;background:transparent;color:#000;">
+            <button onclick="saveInfluencer()" id="influencer-save-btn" disabled style="width:100%;padding:14px;background:#000;border:none;color:#fff;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;opacity:0.4;">Save Influencer</button>
+          </div>
+        </div>
+
         <div style="margin-bottom:20px">
           <div class="section-label">What are you adding?</div>
           <div class="tag-grid-2">
@@ -553,6 +581,82 @@
       </div>
     </div>
 
+    <!-- ══ TRAVEL ══ -->
+    <div id="tab-travel" style="display:none;animation:fadeUp 0.4s ease">
+
+      <!-- TRIP PLANNER -->
+      <div id="travel-planner">
+        <div class="section-label" style="margin-bottom:20px">Plan your trip wardrobe</div>
+
+        <!-- Destination -->
+        <div style="margin-bottom:24px">
+          <div class="section-label">Destination</div>
+          <input type="text" id="travel-destination" placeholder="e.g. Paris, New York, Tokyo..."
+            style="width:100%;background:#fff;border:none;border-bottom:2px solid #000;padding:14px 0;color:#000;font-size:18px;font-family:inherit;font-weight:700;">
+        </div>
+
+        <!-- Dates -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:24px">
+          <div>
+            <div class="section-label">From</div>
+            <input type="date" id="travel-date-from"
+              style="width:100%;background:#fff;border:none;border-bottom:2px solid #000;padding:14px 0;color:#000;font-size:16px;font-family:inherit;font-weight:700;">
+          </div>
+          <div>
+            <div class="section-label">To</div>
+            <input type="date" id="travel-date-to"
+              style="width:100%;background:#fff;border:none;border-bottom:2px solid #000;padding:14px 0;color:#000;font-size:16px;font-family:inherit;font-weight:700;">
+          </div>
+        </div>
+
+        <!-- Trip type -->
+        <div style="margin-bottom:20px">
+          <div class="section-label">Type of trip</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+            <button class="tag-btn" id="ttype-tourism" onclick="selectTravelTag('type','Tourism',this)">Tourism</button>
+            <button class="tag-btn" id="ttype-work" onclick="selectTravelTag('type','Work',this)">Work</button>
+            <button class="tag-btn" id="ttype-mixed" onclick="selectTravelTag('type','Work + Tourism',this)">Work + Tourism</button>
+            <button class="tag-btn" id="ttype-event" onclick="selectTravelTag('type','Event / Wedding',this)">Event / Wedding</button>
+          </div>
+        </div>
+
+        <!-- Luggage -->
+        <div style="margin-bottom:20px">
+          <div class="section-label">Luggage</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+            <button class="tag-btn" id="tlug-hand" onclick="selectTravelTag('luggage','Hand luggage only',this)">Hand luggage only</button>
+            <button class="tag-btn" id="tlug-carry" onclick="selectTravelTag('luggage','Carry-on',this)">Carry-on</button>
+            <button class="tag-btn" id="tlug-checked" onclick="selectTravelTag('luggage','Checked bag',this)">Checked bag</button>
+            <button class="tag-btn" id="tlug-any" onclick="selectTravelTag('luggage','No limit',this)">No limit</button>
+          </div>
+        </div>
+
+        <!-- Extra context -->
+        <div style="margin-bottom:20px">
+          <div class="section-label">Specific events or needs</div>
+          <textarea class="context-textarea" id="travel-extra" rows="4"
+            placeholder="e.g. 3 evening dinners, one important presentation, beach day, hiking morning..."></textarea>
+        </div>
+
+        <div id="travel-weather-status" style="display:none;font-size:14px;color:#555;font-style:italic;margin-bottom:16px;padding:12px 16px;background:#f5f5f5;border-left:3px solid #000;"></div>
+
+        <button class="btn-primary" id="travel-plan-btn" onclick="planTravel()" disabled>Plan My Wardrobe</button>
+        <div id="travel-error" style="display:none;margin-top:12px" class="feedback-msg error"></div>
+      </div>
+
+      <!-- TRAVEL RESULT -->
+      <div id="travel-result" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <div class="result-meta" id="travel-result-meta"></div>
+            <div class="result-title" id="travel-result-title" style="font-size:28px"></div>
+          </div>
+          <button onclick="resetTravel()" style="padding:10px 16px;background:transparent;border:1px solid #000;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">New Trip</button>
+        </div>
+        <div id="travel-result-content"></div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -630,7 +734,7 @@ const ACCESSORY_CATS=['Accessory','Bag','Jewellery'];
 function isAccessoryCategory(){ return ACCESSORY_CATS.includes(selectedCategoryTag); }
 let uploadArchiveType='looks';
 let queue=[],currentOptions=[],currentOptionIdx=0,chatHistory=[];
-let filterOccasion='All',filterWeather='All';
+let filterOccasion='All',filterWeather='All',filterCategory='All';
 let archiveOnly=false,archiveViewType='looks';
 let selectedPieceId=null,selectedPieceData=null;
 let inspoType=null,inspoQueue=[];
@@ -642,6 +746,7 @@ function switchTab(tab,btn){
   ['stylist','wardrobe','inspiration'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'block':'none');
   if(tab==='wardrobe') loadGallery();
   if(tab==='inspiration') loadInspiration();
+  if(tab==='travel'){ const t=new Date().toISOString().split('T')[0]; const df=document.getElementById('travel-date-from'); if(df&&!df.value) df.min=t; }
 }
 
 // ── STYLE ME ─────────────────────────────────────────────
@@ -681,31 +786,38 @@ function renderPiecePicker(){
     return parts.some(pt=>pt.trim()===filter);
   });
   const container=document.getElementById('piece-picker-container');
-  container.innerHTML=`
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">
-      ${cats.map(c=>`<button onclick="setPiecerFilter('${c}',this)" style="padding:7px 12px;border:1px solid ${c===filter?'#000':'#e0e0e0'};background:${c===filter?'#000':'#fff'};color:${c===filter?'#fff':'#666'};font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">${c}</button>`).join('')}
-    </div>
-    ${filtered.length===0
+  var catBtns=cats.map(function(c){
+    var active=c===filter;
+    var border=active?'#000':'#e0e0e0';
+    var bg=active?'#000':'#fff';
+    var col=active?'#fff':'#666';
+    return '<button onclick="setPiecerFilter(&quot;'+c+'&quot;,this)" style="padding:7px 12px;border:1px solid '+border+';background:'+bg+';color:'+col+';font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">'+c+'</button>';
+  }).join('');
+  var pieceCards=filtered.map(function(p){
+    var pName=(p.description?p.description.split(' | ')[0]:'') || 'Piece';
+    var pImg=p.image_data||p.image_url||'';
+    return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)">'
+      +'<img class="piece-picker-img" src="'+pImg+'" onerror="this.style.display=&quot;none&quot;">'
+      +'<div class="piece-picker-name">'+pName+'</div>'
+      +'<div class="piece-picker-check">✓</div></div>';
+  }).join('');
+  container.innerHTML='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'+catBtns+'</div>'
+    +(filtered.length===0
       ?'<div style="padding:20px;text-align:center;font-size:14px;color:#999;font-style:italic">No pieces in this category yet.</div>'
-      :`<div class="piece-picker-grid">${filtered.map(p=>`
-          <div class="piece-picker-item" id="picker-${p.id}" onclick="selectPiece('${p.id}')">
-            <img class="piece-picker-img" src="${p.image_data||p.image_url}" onerror="this.style.display='none'">
-            <div class="piece-picker-name">${p.description?.split(' | ')[0]||'Piece'}</div>
-            <div class="piece-picker-check">✓</div>
-          </div>`).join('')}</div>`}`;
+      :'<div class="piece-picker-grid">'+pieceCards+'</div>');
 }
 
 function setPiecerFilter(cat,btn){
   window._pickerFilter=cat;
   renderPiecePicker();
-  if(selectedPieceId) document.getElementById('picker-'+selectedPieceId)?.classList.add('selected');
+  if(selectedPieceId){var _pe=document.getElementById('picker-'+selectedPieceId);if(_pe)_pe.classList.add('selected');}
 }
 
 function selectPiece(id){
   document.querySelectorAll('.piece-picker-item').forEach(el=>{el.classList.remove('selected');});
-  document.getElementById('picker-'+id)?.classList.add('selected');
+  var _pi=document.getElementById('picker-'+id);if(_pi)_pi.classList.add('selected');
   selectedPieceId=id;
-  selectedPieceData=window._allPieces?.find(p=>p.id===id);
+  selectedPieceData=window._allPieces?window._allPieces.find(function(p){return p.id===id;}):null;
   document.getElementById('compose-piece-btn').disabled=!(selectedPieceId&&selectedOccasion&&selectedWeatherStyle);
 }
 
@@ -790,16 +902,28 @@ async function _doCompose(extra,anchorPiece){
   const pieces=outfits.filter(o=>o.photo_type==='Individual Piece');
   const looks=outfits.filter(o=>o.photo_type!=='Individual Piece');
 
-  const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').limit(10);
+  const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(40);
   const regularInspo=(inspo||[]).filter(i=>!(i.text_content||'').startsWith('INFLUENCER:'));
   const influencerInspo=(inspo||[]).filter(i=>(i.text_content||'').startsWith('INFLUENCER:'));
-  const influencerContext=influencerInspo.length>0?'\n\nSTYLE INFLUENCERS (embody their aesthetic fully — these are her style icons):\n'+influencerInspo.map(i=>{const parts=(i.text_content||'').replace('INFLUENCER:','').split(' | ');return parts[0]+(parts[1]?' — '+parts[1]:'');}).join('\n'):'';
-  const inspoContext=(regularInspo.length>0?'\n\nSTYLE INSPIRATIONS:\n'+regularInspo.map(i=>i.ai_summary||i.text_content||'').filter(Boolean).join('\n'):'')+influencerContext;
-  const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason').limit(50);
-  const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
-  const fbContext=fbData&&fbData.length>0?`\n\nFEEDBACK HISTORY:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
-
-  const allItems=archiveOnlyState?outfits:outfits;
+  const influencerContext=influencerInspo.length>0?'\n\nSTYLE ICONS (channel their aesthetic — these are her inspirations):\n'+influencerInspo.map(i=>{const parts=(i.text_content||'').replace('INFLUENCER:','').split(' | ');return parts[0]+(parts[1]?' — '+parts[1]:'');}).join('\n'):'';
+  // Separate text tips from photo inspirations — tips are most valuable for AI
+  const textInspo=regularInspo.filter(function(i){return i.type==='text'||!i.type;});
+  const photoInspo=regularInspo.filter(function(i){return i.type==='photo';});
+  function formatTip(i){
+    const tipLines=(i.text_content||'').split('\n').filter(function(l){return !l.startsWith('http');});
+    return '• '+(i.ai_summary||(tipLines.join(' ').trim()));
+  }
+  const tipsList=textInspo.map(formatTip).filter(Boolean).slice(0,20).join('\n');
+  const tipsContext=tipsList?'\n\nSTYLE RULES & TIPS (MANDATORY — apply these directly to the outfit):\n'+tipsList:'';
+  const photoList=photoInspo.map(function(i){return i.ai_summary||'';}).filter(Boolean).slice(0,5).join('\n');
+  const photoInspoContext=photoList?'\n\nVISUAL INSPIRATIONS:\n'+photoList:'';
+  const inspoContext=tipsContext+photoInspoContext+influencerContext;
+  const {data:fbData}=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather,created_at').order('created_at',{ascending:false}).limit(80);
+  const liked=fbData?fbData.filter(f=>f.feedback==='like'):[];
+  const disliked=fbData?fbData.filter(f=>f.feedback==='dislike'):[];
+  const likedStr=liked.slice(0,12).map(function(f){return f.piece_name+(f.occasion?' for '+f.occasion:'');}).join(', ');
+  const dislikedStr=disliked.slice(0,12).map(function(f){return f.piece_name+(f.reason?' — '+f.reason:'')+(f.weather?' ('+f.weather+' weather)':'');}).join(' | ');
+  const fbContext=fbData&&fbData.length>0?'\n\nFEEDBACK (most recent first — learn her preferences):\nLIKED: '+likedStr+'\nDISLIKED: '+dislikedStr:'';
 
   const piecesList=pieces.map(o=>{
     return `[WARDROBE_ID:${o.id}] PIECE | ${o.occasion}/${o.weather||'?'} | ${o.description||'item'}`;
@@ -809,22 +933,20 @@ async function _doCompose(extra,anchorPiece){
     let parsed=null;
     try{parsed=JSON.parse(o.description);}catch(e){}
     if(parsed&&parsed.pieces){
-      const piecesInLook=parsed.pieces.map(p=>`  → ${p.category}: ${p.description}`).join('\n');
+      const piecesInLook=parsed.pieces.map(function(p){return '  → '+p.category+': '+p.description;}).join('\n');
       return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${parsed.description||''}\n${piecesInLook}\n  Style: ${parsed.style_notes||''}`;
     }
     return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${o.description||'outfit'}`;
   }).join('\n');
 
-  const anchorContext=anchorPiece?`\n\nSTART FROM THIS PIECE: "${anchorPiece.description?.split(' | ')[0]||'piece'}" (WARDROBE_ID:${anchorPiece.id}) — build the entire outfit around this.`:'';
+  const anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') — build the entire outfit around this.':'';
 
   const archiveInstruction=archiveOnlyState
     ?`ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.`
     :`PREFER archive items when they fit the occasion and weather. Reference them with their exact WARDROBE_ID. For FULL LOOK items you can suggest the whole look as one option, OR mix individual pieces from it with other archive pieces. For pieces not in archive, set wardrobeId null and describe vividly.`;
 
-  const prompt=`Create TWO complete outfit options for Isabella.
-OCCASION: ${selectedOccasion}
-WEATHER: ${selectedWeatherStyle}
-${extra?'NOTES: '+extra:''}
+  const prompt=`Style Isabella for: ${selectedOccasion} / ${selectedWeatherStyle} weather.
+${extra?'HER NOTES: '+extra:''}
 
 ${archiveInstruction}
 ${anchorContext}
@@ -832,29 +954,34 @@ ${anchorContext}
 ━━ INDIVIDUAL PIECES (${pieces.length}) ━━
 ${piecesList||'None yet'}
 
-━━ FULL LOOKS & MIRROR PICS (${looks.length}) ━━
+━━ FULL LOOKS & MIRROR PHOTOS (${looks.length}) ━━
 ${looksList||'None yet'}
 ${inspoContext}
 ${fbContext}
+${getRecentlyUsedContext()}
 
-RULES:
-- MIXING IS PREFERRED: use different WARDROBE_IDs across pieces. e.g. top from one mirror pic + trousers from a PIECE + shoes from another pic.
-- Only use the same WARDROBE_ID for all slots if you are intentionally suggesting "wear this exact look again".
-- If using a FULL LOOK photo for one piece (e.g. the top visible in it), set wardrobeId to that look's ID and describe ONLY that specific piece (e.g. "Fuchsia peplum top from your work mirror pic").
-- For archive items: copy WARDROBE_ID exactly. Name = describe the specific piece, not the whole outfit.
-- For non-archive items: wardrobeId=null, vivid description (color, fabric, cut).
-- Be direct, no fluff. Never name a piece "Work outfit" — always describe what it actually looks like.
+RULES — follow all of these:
+1. TIPS ARE LAW: The style rules and tips above are her personal style bible. Apply them directly. If a tip says "knee-high boots elevate any look" — use knee-high boots. If feedback says she disliked black in warm weather — don't suggest black tops in warm weather.
+2. MINE FULL LOOKS: Every mirror photo contains multiple borrowable pieces. Extract each visible item separately with the same WARDROBE_ID. A photo showing blazer + trousers + shoes = three separate pieces you can use.
+3. MIX SOURCES: Combine pieces from different WARDROBE_IDs. Top from one photo + trousers from a piece + shoes from another photo = one great outfit.
+4. TWO DIFFERENT LOOKS: The two options must have clearly different silhouettes and color stories. Not two versions of the same outfit.
+5. OMIT EMPTY: If outerwear or accessories aren't needed, leave them out entirely. No empty slots, no "N/A".
+6. ARCHIVE FIRST: Always prefer her actual wardrobe items over generic suggestions. wardrobeId=null only when nothing in archive fits.
+7. BE SPECIFIC: Describe pieces vividly (color, fabric, cut). Never say "Work outfit" or "Day look".
 
 Respond ONLY in JSON:
-{"options":[{"headline":"3-4 word title","colorStory":"one sentence","isFullLook":false,"pieces":[{"category":"Top","name":"description","note":"","wardrobeId":"WARDROBE_ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null},{"category":"Outerwear","name":"","note":"","wardrobeId":null},{"category":"Accessories","name":"","note":"","wardrobeId":null}],"stylistNote":"one tip","lip":"lip color","edge":"one accent"},{"headline":"...","colorStory":"...","isFullLook":false,"pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
+{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional styling tip","wardrobeId":"ID or null"},{"category":"Bottom","name":"","note":"","wardrobeId":null},{"category":"Shoes","name":"","note":"","wardrobeId":null}],"stylistNote":"one actionable tip","lip":"specific lip color","edge":"one detail that elevates the look"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}`;
 
   try{
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||JSON.stringify(data));
     if(!data.content) throw new Error('No content: '+JSON.stringify(data));
     currentOptions=JSON.parse(data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim()).options||[];
+    // Track used IDs for variety
+    const usedIds=currentOptions.flatMap(o=>(o.pieces||[]).map(p=>p.wardrobeId).filter(Boolean));
+    markUsed([...new Set(usedIds)]);
     showResult(anchorPiece);
   }catch(e){
     const errId=anchorPiece?'compose-piece-error':'compose-error';
@@ -869,10 +996,10 @@ function showResult(anchorPiece){
   document.getElementById('stylist-scratch').style.display='none';
   document.getElementById('stylist-piece').style.display='none';
   document.getElementById('stylist-result').style.display='block';
-  const anchorLabel=anchorPiece?` — Built around: ${anchorPiece.description?.split(' | ')[0]||''}`:'';
+  const anchorLabel=anchorPiece?' — Built around: '+(anchorPiece.description?anchorPiece.description.split(' | ')[0]||'':''):'';
   document.getElementById('result-label').textContent=`${selectedOccasion} — ${selectedWeatherStyle}${anchorLabel}`;
-  document.getElementById('result-headline').textContent=currentOptions[0]?.headline||'';
-  document.getElementById('result-color').textContent=currentOptions[0]?.colorStory||'';
+  document.getElementById('result-headline').textContent=(currentOptions[0]&&currentOptions[0].headline)||'';
+  document.getElementById('result-color').textContent=(currentOptions[0]&&currentOptions[0].colorStory)||'';
   renderOption(0);renderOption(1);showOption(0);
   chatHistory=[{role:'assistant',content:'Two looks ready. Ask me anything — swap a piece, adjust for weather, or push it further.'}];
   renderChat();
@@ -893,7 +1020,7 @@ function renderOption(idx){
   const el=document.getElementById('option-'+idx);
   if(!el)return;
 
-  const usedIds=[...new Set(opt.pieces?.map(p=>p.wardrobeId).filter(Boolean))];
+  const usedIds=[...new Set((opt.pieces||[]).map(function(p){return p.wardrobeId;}).filter(Boolean))];
   const heroLook=usedIds.length===1?allOutfits.find(o=>o.id===usedIds[0]&&o.photo_type!=='Individual Piece'):null;
   const heroHtml=heroLook
     ?`<div style="position:relative;margin-bottom:20px">
@@ -902,7 +1029,7 @@ function renderOption(idx){
       </div>`
     :'';
 
-  const piecesHtml=opt.pieces?.map((p,pi)=>{
+  const piecesHtml=(opt.pieces||[]).filter(function(p){return p.name&&p.name.trim()&&!['none','n/a','not needed','skip',''].includes(p.name.toLowerCase().trim());}).map(function(p,pi){
     const matched=p.wardrobeId
       ?allOutfits.find(o=>o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim())
       :null;
@@ -920,8 +1047,8 @@ function renderOption(idx){
       <div class="piece-content">
         <div class="piece-category">${p.category}${matched?'<span style="font-size:9px;letter-spacing:0.12em;color:#4a7a5a;margin-left:6px;font-weight:700">✓ yours</span>':''}</div>
         <div class="piece-name">${p.name}</div>
-        ${p.note?`<div class="piece-note">${p.note}</div>`:''}
-        <div class="piece-feedback">
+        +(p.note?'<div class="piece-note">'+p.note+'</div>':'')+
+        '        <div class="piece-feedback">
           <button class="fb-btn" id="fb-${safeId}-like" onclick="saveFeedback('${safeId}','like','${safeName}')">👍</button>
           <button class="fb-btn" id="fb-${safeId}-dislike" onclick="showDislikeReason('${safeId}','${safeName}')">👎</button>
         </div>
@@ -961,7 +1088,7 @@ async function saveFeedback(safeId,feedback,pieceName){
 
 function renderChat(){
   const el=document.getElementById('chat-messages');
-  el.innerHTML=chatHistory.map(m=>m.role==='assistant'?`<div class="chat-msg-ai">${m.content}</div>`:`<div class="chat-msg-user">${m.content}</div>`).join('');
+  el.innerHTML=chatHistory.map(function(m){return m.role==='assistant'?'<div class="chat-msg-ai">'+m.content+'</div>':'<div class="chat-msg-user">'+m.content+'</div>';}).join('');
   el.scrollTop=el.scrollHeight;
 }
 async function sendChat(){
@@ -994,6 +1121,32 @@ function resetStylist(){
   if(toggle){toggle.style.background='#e0e0e0';document.getElementById('archive-toggle-knob').style.left='2px';}
 }
 
+// ── VARIETY: track recently suggested wardrobe IDs ────────
+function getRecentlyUsed(){
+  try{
+    const raw=localStorage.getItem('wb_recentlyUsed');
+    if(!raw) return [];
+    const parsed=JSON.parse(raw);
+    const cutoff=Date.now()-15*24*60*60*1000; // 15 days
+    return parsed.filter(e=>e.ts>cutoff);
+  }catch(e){return [];}
+}
+function markUsed(wardrobeIds){
+  try{
+    const existing=getRecentlyUsed();
+    const ts=Date.now();
+    wardrobeIds.forEach(id=>{
+      if(!existing.find(e=>e.id===id)) existing.push({id,ts});
+    });
+    localStorage.setItem('wb_recentlyUsed',JSON.stringify(existing.slice(-100)));
+  }catch(e){}
+}
+function getRecentlyUsedContext(){
+  const recent=getRecentlyUsed();
+  if(!recent.length) return '';
+  return '\n\nRECENTLY SUGGESTED (avoid repeating full combinations — mix differently):\n'+recent.map(function(e){return e.id;}).join(', ');
+}
+
 // ── ARCHIVE ───────────────────────────────────────────────
 function switchWardrobe(view){
   document.getElementById('wardrobe-gallery').style.display=view==='gallery'?'block':'none';
@@ -1008,6 +1161,13 @@ function switchArchiveType(type,btn){
   archiveViewType=type;
   document.querySelectorAll('.archive-type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  // Show correct filter panel
+  document.getElementById('looks-filters').style.display=type==='looks'?'block':'none';
+  document.getElementById('pieces-filters').style.display=type==='pieces'?'block':'none';
+  // Reset filters
+  filterOccasion='All';filterWeather='All';filterCategory='All';
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#looks-filters .filter-btn:first-child, #pieces-filters .filter-btn:first-child').forEach(b=>b.classList.add('active'));
   loadGallery();
 }
 
@@ -1035,7 +1195,7 @@ function renderQueue(){
   section.style.display='block';
   document.getElementById('upload-zone-title').textContent='+ Add More';
   document.getElementById('upload-zone-sub').textContent=queue.length+' selected';
-  document.getElementById('queue-grid').innerHTML=queue.map(q=>`<div class="queue-item"><img class="queue-img" src="${q.img}"><button class="queue-remove" onclick="removeFromQueue(${q.id})">✕</button></div>`).join('');
+  document.getElementById('queue-grid').innerHTML=queue.map(function(q){return '<div class="queue-item"><img class="queue-img" src="'+q.img+'"><button class="queue-remove" onclick="removeFromQueue('+q.id+')">✕</button></div>';}).join('');
   updateSaveBtn();
 }
 function removeFromQueue(id){queue=queue.filter(q=>q.id!==id);renderQueue();}
@@ -1170,7 +1330,9 @@ const occColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A
 const wxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
 
 function filterBy(type,val,btn){
-  if(type==='occasion') filterOccasion=val; else filterWeather=val;
+  if(type==='occasion') filterOccasion=val;
+  else if(type==='weather') filterWeather=val;
+  else if(type==='category') filterCategory=val;
   document.querySelectorAll('.filter-btn').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(`'${type}'`))b.classList.remove('active');});
   btn.classList.add('active');
   loadGallery();
@@ -1181,14 +1343,26 @@ async function loadGallery(){
   document.getElementById('gallery-grid').style.display='none';
   document.getElementById('gallery-empty').style.display='none';
   try{
+    const isPiecesView=archiveViewType==='pieces';
     let query=sb.from('outfits').select('*').order('created_at',{ascending:false});
-    query=query.eq('photo_type',archiveViewType==='pieces'?'Individual Piece':'Full Outfit');
+    // Only Individual Piece for pieces tab, everything else for looks tab
+    query=query.eq('photo_type',isPiecesView?'Individual Piece':'Full Outfit');
     const {data:rawData,error}=await query;
-    // Client-side filter to handle comma-joined multi-tags and 'All' (accessories)
+    // Client-side filter
     const data=rawData?rawData.filter(item=>{
-      const occMatch=filterOccasion==='All'||!item.occasion||item.occasion==='All'||item.occasion.split(',').includes(filterOccasion);
-      const wxMatch=filterWeather==='All'||!item.weather||item.weather==='All'||item.weather.split(',').includes(filterWeather);
-      return occMatch&&wxMatch;
+      if(isPiecesView){
+        // Filter by category (stored in description as "Name | Category | ...")
+        if(filterCategory!=='All'){
+          const parts=(item.description||'').split(' | ');
+          const cat=parts[1]||'';
+          if(cat!==filterCategory) return false;
+        }
+        return true;
+      } else {
+        const occMatch=filterOccasion==='All'||!item.occasion||item.occasion==='All'||item.occasion.split(',').includes(filterOccasion);
+        const wxMatch=filterWeather==='All'||!item.weather||item.weather==='All'||item.weather.split(',').includes(filterWeather);
+        return occMatch&&wxMatch;
+      }
     }):null;
     if(error)throw error;
     document.getElementById('gallery-loading').style.display='none';
@@ -1196,13 +1370,12 @@ async function loadGallery(){
     document.getElementById('gallery-grid').style.display='grid';
     const total=data.length;
     document.getElementById('archive-tab').textContent=`Archive — ${total}`;
-    const isPiecesView=archiveViewType==='pieces';
     document.getElementById('gallery-grid').innerHTML=data.map(item=>`
       <div class="gallery-item" id="item-${item.id}">
         <div style="position:relative">
           <img class="gallery-img" src="${item.image_data||item.image_url}" loading="lazy" onerror="this.style.display='none'">
           ${isPiecesView&&item.description
-            ?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3">${item.description?.split(' | ')[0]||''}</div>`
+            ?("<div style='position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;line-height:1.3'>"+(item.description?(item.description.split(' | ')[0]||''):'')+'</div>')
             :''}
           <button class="delete-btn" style="right:32px" onclick="openEditItem('${item.id}','${item.occasion||''}','${item.weather||''}','${(item.description||'').replace(/'/g,"\\'")}')">✏️</button>
           <button class="delete-btn" onclick="deleteItem('${item.id}')">✕</button>
@@ -1246,44 +1419,71 @@ function handleInspoFiles(files){
       inspoQueue.push({img:e.target.result,id:Date.now()+Math.random()});
       const grid=document.getElementById('inspo-queue-grid');
       grid.style.display='grid';
-      grid.innerHTML=inspoQueue.map(q=>`<div class="queue-item"><img class="queue-img" src="${q.img}"></div>`).join('');
+      grid.innerHTML=inspoQueue.map(function(q){return '<div class="queue-item"><img class="queue-img" src="'+q.img+'"></div>';}).join('');
     };
     reader.readAsDataURL(file);
   });
   document.getElementById('inspo-file-input').value='';
 }
 async function saveInspiration(){
-  const btn=document.getElementById('inspo-save-btn');
-  const fb=document.getElementById('inspo-feedback');
-  btn.disabled=true; btn.textContent='Saving...';
-  fb.style.display='none';
+const btn=document.getElementById('inspo-save-btn');
+const fb=document.getElementById('inspo-feedback');
+btn.disabled=true; btn.textContent='Saving...';
+fb.style.display='none';
 
-  const url=document.getElementById('inspo-url-input').value.trim();
-  const inspoTitle=document.getElementById('inspo-title-input').value.trim();
-  let saved=0, lastError=null;
+const url=document.getElementById('inspo-url-input').value.trim();
+const inspoTitle=document.getElementById('inspo-title-input').value.trim();
+let saved=0, lastError=null;
 
-  try{
-    if(inspoType==='text'){
-      const text=document.getElementById('inspo-text-input').value.trim();
-      if(!text && !url){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
+try{
+if(inspoType==='text'){
+const text=document.getElementById('inspo-text-input').value.trim();
+if(!text && !url){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
 
-      let aiSummary='';
-      try{
-        const isUrlOnly=!text&&url;
-        const systemPrompt=isUrlOnly
-          ?'You are a fashion stylist. The user saved an Instagram/TikTok link as style inspiration. Write 2-3 sentences describing what kind of look or style lesson this likely represents based on the URL and context. Be specific about silhouette, colors, and occasion. English only.'
-          :'Extract the key style tip in English in 1-2 direct sentences. Be specific about pieces, colors, and silhouette.';
+let aiSummary='';
+try{
+const isUrlOnly=!text&&url;
+const systemPrompt='You are a fashion stylist AI. Respond ONLY in JSON: {"title":"short title max 6 words","bullets":["style rule 1 max 12 words","style rule 2","style rule 3"],"ai_detail":"2-3 sentences detail for AI"}. Bullets: max 3, actionable, English only. No markdown.';
         const userMsg=isUrlOnly
-          ?`Describe the style inspiration from this link: ${url}${inspoTitle?' (titled: '+inspoTitle+')':''}`
-          :'Summarize this style note: '+(inspoTitle?inspoTitle+' — ':'')+text;
+          ?'Style inspiration from: '+url+(inspoTitle?' titled: '+inspoTitle:'')
+          :'Style note: '+(inspoTitle?inspoTitle+' — ':'')+text+(url?'\nSource: '+url:'');
         const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:120,
+          body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:200,
             system:systemPrompt,
             messages:[{role:'user',content:userMsg}]})});
         const d=await res.json();
-        aiSummary=d.content.map(i=>i.text||'').join('').trim();
+        const raw=d.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+        try{
+          const parsed=JSON.parse(raw);
+          // Store display-friendly format in text_content, rich detail in ai_summary
+          const bulletLines=(parsed.bullets||[]).map(function(b){return '\u2022'+b;}).join('\n');
+          const displayTitle=parsed.title||inspoTitle||'Style tip';
+          // Rebuild fullText: TITLE\nbullets\nURL
+          const lines=[displayTitle,bulletLines,url].filter(Boolean);
+          aiSummary=parsed.ai_detail||raw;
+          var structuredText=lines.join('\n');
+          const {error:insError}=await sb.from('inspiration').insert({
+            type:'text',
+            text_content:structuredText,
+            ai_summary:aiSummary
+          });
+          if(insErr){lastError=insErr.message||JSON.stringify(insErr);}else{saved++;}
+          // Skip the outer insert below
+          var insErr=await sb.from('inspiration').insert({
+            type:'text',
+            text_content:structuredText,
+            ai_summary:aiSummary
+          });
+          if(insErr){lastError=insErr.message||JSON.stringify(insErr);}else{saved++;}
+          // Skip the outer insert below
+          throw new Error('__DONE__');
+        }catch(parseErr){
+          if(parseErr.message==='__DONE__') throw parseErr;
+          aiSummary=raw; // fallback
+        }
       }catch(e){}
 
+      // Only reaches here if JSON parse failed (fallback)
       const fullText=[inspoTitle, text, url].filter(Boolean).join('\n');
       const {error}=await sb.from('inspiration').insert({
         type:'text',
@@ -1321,7 +1521,8 @@ async function saveInspiration(){
       return;
     }
   }catch(e){
-    lastError=e.message||JSON.stringify(e);
+    if(e.message==='__DONE__'){/* structured save completed */}
+    else{lastError=e.message||JSON.stringify(e);}
   }
 
   if(saved>0){
@@ -1355,34 +1556,36 @@ async function loadInspiration(){
   if(!data||data.length===0){ document.getElementById('inspo-empty').style.display='block'; return; }
   document.getElementById('inspo-grid').style.display='grid';
   document.getElementById('inspiration-tab').textContent=`Inspiration — ${data.length}`;
-  document.getElementById('inspo-grid').innerHTML=data.map(item=>{
-    const safeTitle=(item.ai_summary||item.text_content||'').slice(0,40).replace(/`/g,'&#96;').replace(/"/g,'&quot;');
-    const safeText=(item.text_content||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
-    const lines=(item.text_content||'').split('\n');
-    const urlLine=lines.find(l=>l.startsWith('http'));
-    const bodyLines=lines.filter(l=>!l.startsWith('http'));
-    const bodyText=bodyLines.join('\n').trim();
-    const urlLink=urlLine?`<a href="${urlLine}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;margin-top:10px;padding:10px 14px;background:#000;color:#fff;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;text-decoration:none;text-align:center;">Open Link ↗</a>`:'';
-    return `<div class="inspiration-card" id="inspo-${item.id}">
-      ${item.type==='photo'&&item.image_data
-        ?`<div style="position:relative">
-            <img class="inspiration-img" src="${item.image_data}" loading="lazy" onclick="toggleInspoExpand('${item.id}')">
-            ${item.ai_summary?`<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:8px 10px;font-size:13px;font-weight:700;color:#fff;">${item.ai_summary.slice(0,50)}</div>`:''}
-          </div>
-          <div style="padding:10px 12px;background:#f5f5f5;border-top:1px solid #e0e0e0">
-            ${item.ai_summary?`<div style="font-size:13px;color:#444;line-height:1.6;font-style:italic;margin-bottom:6px">${item.ai_summary}</div>`:''}
-            ${urlLink}
-          </div>`
-        :`<div class="inspiration-text-card">
-            ${item.ai_summary?`<div style="font-size:15px;color:#000;line-height:1.65;font-style:italic;margin-bottom:10px">${item.ai_summary}</div>`:''}
-            ${bodyText&&bodyText!==item.ai_summary?`<div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:8px">${bodyText}</div>`:''}
-            ${urlLink}
-          </div>`}
-      <div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">
-        <button onclick="editInspo('${item.id}','${safeTitle.replace(/'/g,"\\'")}','${safeText.replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✏️</button>
-        <button onclick="deleteInspo('${item.id}')" style="width:30px;height:30px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">✕</button>
-      </div>
-    </div>`;
+  document.getElementById('inspo-grid').innerHTML=data.map(function(item){
+    var rawLines=(item.text_content||'').split('\n');
+    var urlLine=rawLines.find(function(l){return l.startsWith('http');});
+    var nonUrlLines=rawLines.filter(function(l){return !l.startsWith('http');});
+    var titleLine=nonUrlLines.find(function(l){return l&&!l.startsWith('•');});
+    var bulletLines=nonUrlLines.filter(function(l){return l.startsWith('•');});
+    var displayTitle=titleLine||item.ai_summary||'Style tip';
+    var urlLink=urlLine?'<a href="'+urlLine+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;margin-top:10px;padding:9px 12px;background:#000;color:#fff;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;text-decoration:none;text-align:center;">Open ↗</a>':'';
+    var safeId=item.id;
+    if(item.type==='photo'&&item.image_data){
+      var overlayHtml=displayTitle?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:7px 10px;font-size:12px;font-weight:700;color:#fff;line-height:1.3">'+displayTitle.slice(0,60)+'</div>':'';
+      var bulletsHtml=bulletLines.map(function(b){return '<div style="font-size:12px;color:#444;line-height:1.5;padding:2px 0">'+b+'</div>';}).join('');
+      return '<div class="inspiration-card" id="inspo-'+safeId+'">'
+        +'<div style="position:relative"><img class="inspiration-img" src="'+item.image_data+'" loading="lazy">'+overlayHtml+'</div>'
+        +'<div style="padding:10px 12px;background:#f5f5f5;border-top:1px solid #e0e0e0">'+bulletsHtml+urlLink+'</div>'
+        +'<div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">'
+        +'<button onclick="deleteInspo(\''+safeId+'\')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;">✕</button>'
+        +'</div></div>';
+    } else {
+      var bHtml=bulletLines.map(function(b){return '<div style="font-size:13px;color:#555;line-height:1.5;padding:3px 0;border-bottom:1px solid #f5f5f5">'+b+'</div>';}).join('');
+      var fallback=(!bulletLines.length&&item.ai_summary&&item.ai_summary!==displayTitle)?'<div style="font-size:12px;color:#888;font-style:italic;line-height:1.5;margin-top:4px">'+item.ai_summary.slice(0,120)+'</div>':'';
+      return '<div class="inspiration-card" id="inspo-'+safeId+'">'
+        +'<div class="inspiration-text-card">'
+        +'<div style="font-size:14px;font-weight:700;color:#000;line-height:1.4;margin-bottom:8px">'+displayTitle+'</div>'
+        +bHtml+fallback+urlLink
+        +'</div>'
+        +'<div style="display:flex;justify-content:flex-end;gap:4px;padding:6px 8px;border-top:1px solid #e0e0e0;background:#fff">'
+        +'<button onclick="deleteInspo(\''+safeId+'\')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;">✕</button>'
+        +'</div></div>';
+    }
   }).join('');
 }
 function toggleInspoExpand(id){
@@ -1466,20 +1669,83 @@ async function saveEditItem(){
 }
 
 // ── INFLUENCERS ───────────────────────────────────────────
-function showAddInfluencer(){ document.getElementById('add-influencer-form').style.display='block'; document.getElementById('influencer-handle').focus(); }
-function hideAddInfluencer(){ document.getElementById('add-influencer-form').style.display='none'; document.getElementById('influencer-handle').value=''; document.getElementById('influencer-name').value=''; }
+function showAddInfluencer(){ switchInspo('add'); setTimeout(function(){var el=document.getElementById('influencer-url-input');if(el)el.focus();},200); }
+function hideAddInfluencer(){
+  var u=document.getElementById('influencer-url-input'); if(u) u.value='';
+  var h=document.getElementById('influencer-handle'); if(h) h.value='';
+  var n=document.getElementById('influencer-name'); if(n) n.value='';
+  var p=document.getElementById('influencer-handle-preview'); if(p) p.style.display='none';
+  var b=document.getElementById('influencer-save-btn'); if(b){b.disabled=true;b.style.opacity='0.4';}
+}
+
+function extractInfluencerHandle(url){
+  var handle='';
+  var preview=document.getElementById('influencer-handle-preview');
+  var previewText=document.getElementById('influencer-handle-text');
+  var hiddenHandle=document.getElementById('influencer-handle');
+  var saveBtn=document.getElementById('influencer-save-btn');
+
+  if(!url||!url.trim()){
+    preview.style.display='none';
+    hiddenHandle.value='';
+    saveBtn.disabled=true; saveBtn.style.opacity='0.4';
+    return;
+  }
+
+  // Extract from Instagram: instagram.com/username, instagram.com/p/xxx (extract from post URL)
+  var igProfile=/instagram\.com\/([A-Za-z0-9._]+)\/?(\?|$|\/p\/|\/reel\/)/;
+  var igPost=/instagram\.com\/(p|reel|tv)\/[^\/]+\/?/; // post URL — can't extract user
+  var ttProfile=/tiktok\.com\/@([A-Za-z0-9._]+)/;
+  var ttAlt=/tiktok\.com\/([A-Za-z0-9._]+)/;
+
+  var m;
+  if((m=url.match(/instagram\.com\/([A-Za-z0-9._]{1,30})(\/|\?|$)/))&&
+     !['p','reel','tv','stories','explore','accounts','direct'].includes(m[1])){
+    handle=m[1];
+  } else if((m=url.match(/tiktok\.com\/@([A-Za-z0-9._]+)/))) {
+    handle=m[1];
+  } else if((m=url.match(/tiktok\.com\/([A-Za-z0-9._]{3,30})(\/|\?|$)/))&&m[1]!=='v') {
+    handle=m[1];
+  } else if(url.indexOf('@')>=0&&url.indexOf('.')===(-1)){
+    // Plain @handle typed
+    handle=url.replace(/^@/,'');
+  } else if(!url.startsWith('http')&&url.length>1&&url.length<40&&!/\s/.test(url)){
+    // Looks like a plain username
+    handle=url.replace(/^@/,'');
+  }
+
+  if(handle){
+    hiddenHandle.value=handle;
+    previewText.textContent='@'+handle;
+    preview.style.display='block';
+    saveBtn.disabled=false; saveBtn.style.opacity='1';
+  } else {
+    hiddenHandle.value='';
+    preview.style.display='none';
+    saveBtn.disabled=true; saveBtn.style.opacity='0.4';
+  }
+}
 
 async function saveInfluencer(){
   const handle=document.getElementById('influencer-handle').value.trim().replace(/^@/,'');
   const name=document.getElementById('influencer-name').value.trim();
   if(!handle) return;
+  const saveBtn=document.getElementById('influencer-save-btn');
+  saveBtn.disabled=true; saveBtn.textContent='Saving...';
   const {error}=await sb.from('inspiration').insert({
     type:'text',
     text_content:'INFLUENCER:@'+handle+(name?' | '+name:''),
     ai_summary:'Style inspiration: @'+handle+(name?' — '+name:'')
   });
-  if(!error){ hideAddInfluencer(); loadInfluencers(); }
-  else alert('Save failed: '+error.message);
+  if(!error){
+    hideAddInfluencer();
+    saveBtn.textContent='Save Influencer';
+    switchInspo('view');
+    loadInfluencers();
+  } else {
+    alert('Save failed: '+error.message);
+    saveBtn.disabled=false; saveBtn.textContent='Save Influencer';
+  }
 }
 
 async function loadInfluencers(){
@@ -1494,23 +1760,288 @@ async function loadInfluencers(){
     const handle=parts[0]||'';
     const note=parts[1]||'';
     const platform=handle.startsWith('@')?handle.substring(1):handle;
-    const igUrl=`https://www.instagram.com/${platform.replace('@','')}`;
-    const ttUrl=`https://www.tiktok.com/@${platform.replace('@','')}`;
-    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid #e0e0e0;">
-      <div style="width:40px;height:40px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span style="color:#fff;font-size:16px;font-weight:700;font-style:italic">@</span>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:16px;font-weight:700;color:#000">${handle}</div>
-        ${note?`<div style="font-size:13px;color:#888;font-style:italic;margin-top:2px">${note}</div>`:''}
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <a href="${igUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">Instagram ↗</a>
-          <a href="${ttUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">TikTok ↗</a>
-        </div>
-      </div>
-      <button onclick="deleteInspo('${inf.id}')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>
-    </div>`;
+    var igUrl='https://www.instagram.com/'+platform.replace('@','');
+    var ttUrl='https://www.tiktok.com/@'+platform.replace('@','');
+    var noteHtml=note?'<div style="font-size:13px;color:#888;font-style:italic;margin-top:2px">'+note+'</div>':'';
+    return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid #e0e0e0;">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+      +'<span style="color:#fff;font-size:16px;font-weight:700;font-style:italic">@</span></div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:16px;font-weight:700;color:#000">'+handle+'</div>'
+      +noteHtml
+      +'<div style="display:flex;gap:8px;margin-top:6px">'
+      +'<a href="'+igUrl+'" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">Instagram ↗</a>'
+      +'<a href="'+ttUrl+'" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">TikTok ↗</a>'
+      +'</div></div>'
+      +'<button onclick="deleteInspo(this.dataset.id)" data-id="'+inf.id+'" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>'
+      +'</div>';
   }).join('');
+}
+
+
+// ══ TRAVEL MODE ══════════════════════════════════════════
+let travelType=null, travelLuggage=null;
+
+function selectTravelTag(type,val,btn){
+  const colors={Tourism:'#4A7A5A',Work:'#2E3F6F','Work + Tourism':'#4A4A6A','Event / Wedding':'#6B2D3E',
+    'Hand luggage only':'#555','Carry-on':'#3A3530','Checked bag':'#4A5A7A','No limit':'#4A7A5A'};
+  const grid=type==='type'
+    ?document.querySelectorAll('[id^="ttype-"]')
+    :document.querySelectorAll('[id^="tlug-"]');
+  grid.forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+  btn.style.background=colors[val]||'#000';btn.style.borderColor=colors[val]||'#000';btn.style.color='#FFF';
+  if(type==='type') travelType=val;
+  else travelLuggage=val;
+  checkTravelReady();
+}
+
+function checkTravelReady(){
+  const dest=document.getElementById('travel-destination').value.trim();
+  const from=document.getElementById('travel-date-from').value;
+  const to=document.getElementById('travel-date-to').value;
+  const ready=dest&&from&&to&&travelType&&travelLuggage;
+  document.getElementById('travel-plan-btn').disabled=!ready;
+}
+
+// Wire up input changes
+document.addEventListener('DOMContentLoaded',function(){
+  ['travel-destination','travel-date-from','travel-date-to'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',checkTravelReady);
+  });
+  // Set min date to today
+  const today=new Date().toISOString().split('T')[0];
+  const df=document.getElementById('travel-date-from');
+  const dt=document.getElementById('travel-date-to');
+  if(df) df.min=today;
+  if(dt) dt.min=today;
+});
+
+async function fetchTripWeather(destination, dateFrom, dateTo){
+  const statusEl=document.getElementById('travel-weather-status');
+  statusEl.style.display='block';
+  statusEl.textContent='Fetching weather forecast for '+destination+'...';
+  try{
+    // Geocode destination
+    const geoRes=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(destination)+'&count=1&language=en&format=json');
+    const geoData=await geoRes.json();
+    if(!geoData.results||!geoData.results.length) throw new Error('Location not found');
+    const {latitude:lat,longitude:lon,name,country}=geoData.results[0];
+
+    // Fetch forecast — open-meteo supports up to 16 days ahead
+    const forecastRes=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&start_date='+dateFrom+'&end_date='+dateTo);
+    const forecastData=await forecastRes.json();
+    const daily=forecastData.daily;
+
+    if(!daily||!daily.time||!daily.time.length) throw new Error('No forecast available for these dates');
+
+    // Summarize weather
+    const temps=daily.temperature_2m_max;
+    const minTemps=daily.temperature_2m_min;
+    const precips=daily.precipitation_sum;
+    const avgMax=Math.round(temps.reduce(function(a,b){return a+b;},0)/temps.length);
+    const avgMin=Math.round(minTemps.reduce(function(a,b){return a+b;},0)/minTemps.length);
+    const rainyDays=precips.filter(function(p){return p>2;}).length;
+    const maxTemp=Math.round(Math.max.apply(null,temps));
+    const minTemp=Math.round(Math.min.apply(null,minTemps));
+
+    let weatherProfile='';
+    if(avgMax>=26) weatherProfile='Warm to Hot';
+    else if(avgMax>=18) weatherProfile='Mild to Warm';
+    else if(avgMax>=10) weatherProfile='Cool to Mild';
+    else weatherProfile='Cold';
+    if(rainyDays>daily.time.length/2) weatherProfile+=' with frequent rain';
+    else if(rainyDays>0) weatherProfile+=' with '+rainyDays+' rainy day'+(rainyDays>1?'s':'');
+
+    const summary={
+      location:name+', '+country,
+      lat,lon,
+      days:daily.time.length,
+      avgMax,avgMin,maxTemp,minTemp,rainyDays,weatherProfile,
+      dailyData:daily
+    };
+
+    statusEl.textContent='📍 '+name+', '+country+' · '+summary.days+' days · '+avgMin+'°C–'+avgMax+'°C avg · '+weatherProfile;
+    return summary;
+  }catch(e){
+    statusEl.textContent='Could not fetch weather: '+e.message+'. Proceeding without forecast.';
+    return null;
+  }
+}
+
+async function planTravel(){
+  const btn=document.getElementById('travel-plan-btn');
+  const destination=document.getElementById('travel-destination').value.trim();
+  const dateFrom=document.getElementById('travel-date-from').value;
+  const dateTo=document.getElementById('travel-date-to').value;
+  const extra=document.getElementById('travel-extra').value.trim();
+
+  btn.disabled=true; btn.textContent='Fetching forecast...';
+  document.getElementById('travel-error').style.display='none';
+
+  // Calculate trip length
+  const msPerDay=86400000;
+  const tripDays=Math.round((new Date(dateTo)-new Date(dateFrom))/msPerDay)+1;
+
+  // Fetch weather
+  const weather=await fetchTripWeather(destination,dateFrom,dateTo);
+  btn.textContent='Planning your wardrobe...';
+
+  // Fetch wardrobe
+  let {data:outfits}=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(80);
+  outfits=outfits||[];
+  const pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});
+  const looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
+
+  const {data:inspo}=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
+  const textTips=(inspo||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
+  const tipsStr=textTips.map(function(i){return '• '+(i.ai_summary||(i.text_content||'').split('\n')[0]);}).filter(Boolean).slice(0,15).join('\n');
+
+  const piecesList=pieces.map(function(o){
+    return '[ID:'+o.id+'] '+o.description;
+  }).join('\n');
+  const looksList=looks.map(function(o){
+    let desc=o.description||'';
+    try{const p=JSON.parse(desc);desc=p.description||desc;}catch(e){}
+    return '[ID:'+o.id+'] '+o.occasion+' look: '+desc.slice(0,80);
+  }).join('\n');
+
+  const weatherContext=weather
+    ?'WEATHER FORECAST: '+weather.weatherProfile+' ('+weather.minTemp+'°C–'+weather.maxTemp+'°C, '+weather.rainyDays+' rainy days)'
+    :'No forecast available — plan for typical weather for this destination and season.';
+
+  const prompt='Plan a complete trip wardrobe for Isabella.\n\n'+
+    'DESTINATION: '+destination+'\n'+
+    'DATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\n'+
+    'TRIP TYPE: '+travelType+'\n'+
+    'LUGGAGE: '+travelLuggage+'\n'+
+    weatherContext+'\n'+
+    (extra?'SPECIFIC EVENTS/NOTES: '+extra:'')+'\n\n'+
+    '━━ HER WARDROBE PIECES ━━\n'+(piecesList||'None catalogued yet')+'\n\n'+
+    '━━ HER FULL LOOKS ━━\n'+(looksList||'None yet')+'\n\n'+
+    (tipsStr?'━━ HER STYLE RULES (apply these) ━━\n'+tipsStr+'\n\n':'')+
+    'TASK: Create a complete, efficient packing list organized by day-by-day outfits. '+
+    'Maximize use of her wardrobe. Mix and repeat pieces cleverly. '+
+    'For '+travelLuggage+': be ruthless about quantity — every piece must work in at least 2 outfits. '+
+    'Reference her wardrobe items by [ID:xxx] when using them. '+
+    'For missing pieces, describe vividly what to buy/bring.\n\n'+
+    'Respond ONLY in JSON:\n'+
+    '{"tripTitle":"evocative trip name","weatherSummary":"one sentence","packingPhilosophy":"one sentence strategy for this luggage type","outfits":[{"day":"Day 1 — Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"description","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":"one tip"},...],"packingList":{"tops":["item1"],"bottoms":["item1"],"shoes":["item1"],"outerwear":["item1"],"accessories":["item1"],"extras":["item1"]}}';
+
+  try{
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||JSON.stringify(data));
+    const result=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim());
+    renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather);
+  }catch(e){
+    const errEl=document.getElementById('travel-error');
+    errEl.textContent='Error: '+(e.message||JSON.stringify(e));
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='Plan My Wardrobe';
+  }
+}
+
+function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather){
+  document.getElementById('travel-planner').style.display='none';
+  document.getElementById('travel-result').style.display='block';
+
+  document.getElementById('travel-result-meta').textContent=destination+' · '+tripDays+' days · '+travelLuggage;
+  document.getElementById('travel-result-title').textContent=result.tripTitle||'Your Trip Wardrobe';
+
+  const allOutfits=window._lastOutfits||[];
+  let html='';
+
+  // Weather + philosophy banner
+  html+='<div style="background:#f5f5f5;border-left:3px solid #000;padding:16px 18px;margin-bottom:24px">';
+  if(weather) html+='<div style="font-size:13px;font-weight:700;color:#000;margin-bottom:4px">'+weather.weatherProfile+'</div>';
+  html+='<div style="font-size:14px;color:#444;font-style:italic">'+result.packingPhilosophy+'</div>';
+  html+='</div>';
+
+  // Day by day outfits
+  if(result.outfits&&result.outfits.length){
+    html+='<div class="section-label" style="margin-bottom:16px">Day by Day</div>';
+    result.outfits.forEach(function(day){
+      html+='<div style="margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid #e0e0e0">';
+      html+='<div style="font-size:11px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:4px">'+day.day+'</div>';
+      html+='<div style="font-size:15px;font-weight:700;color:#000;margin-bottom:12px">'+day.occasion+'</div>';
+
+      const o=day.outfit||{};
+      const slots=[
+        {key:'top',label:'Top'},
+        {key:'bottom',label:'Bottom'},
+        {key:'shoes',label:'Shoes'},
+        {key:'outerwear',label:'Outerwear'},
+        {key:'accessories',label:'Accessories'}
+      ];
+      slots.forEach(function(slot){
+        const piece=o[slot.key];
+        if(!piece||!piece.name||piece.name==='none'||piece.name==='N/A') return;
+        const matched=piece.wardrobeId?allOutfits.find(function(x){return x.id===piece.wardrobeId;}):null;
+        const imgSrc=matched?(matched.image_data||matched.image_url):null;
+        html+='<div style="display:flex;gap:12px;margin-bottom:8px;align-items:center">';
+        if(imgSrc){
+          html+='<img src="'+imgSrc+'" style="width:48px;height:60px;object-fit:cover;object-position:top;flex-shrink:0;">';
+        } else {
+          html+='<div style="width:48px;height:60px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center"><span style="font-size:9px;color:#aaa;text-align:center;letter-spacing:0.05em">'+slot.label.toUpperCase()+'</span></div>';
+        }
+        html+='<div>';
+        html+='<div style="font-size:10px;letter-spacing:0.3em;color:#999;text-transform:uppercase;font-weight:700">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">✓</span>':'')+'</div>';
+        html+='<div style="font-size:14px;font-weight:700;color:#000;line-height:1.4">'+piece.name+'</div>';
+        html+='</div></div>';
+      });
+      if(day.stylistNote) html+='<div style="font-size:13px;color:#555;font-style:italic;margin-top:8px;padding-left:60px">'+day.stylistNote+'</div>';
+      html+='</div>';
+    });
+  }
+
+  // Packing list
+  if(result.packingList){
+    html+='<div class="section-label" style="margin-bottom:16px;margin-top:8px">Packing List</div>';
+    html+='<div style="background:#fff;border:1px solid #e0e0e0;border-top:2px solid #000;padding:20px">';
+    const cats=[
+      {key:'tops',label:'Tops'},
+      {key:'bottoms',label:'Bottoms'},
+      {key:'shoes',label:'Shoes'},
+      {key:'outerwear',label:'Outerwear'},
+      {key:'accessories',label:'Accessories'},
+      {key:'extras',label:'Extras'}
+    ];
+    cats.forEach(function(cat){
+      const items=result.packingList[cat.key];
+      if(!items||!items.length) return;
+      html+='<div style="margin-bottom:14px">';
+      html+='<div style="font-size:11px;letter-spacing:0.3em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:6px">'+cat.label+'</div>';
+      items.forEach(function(item){
+        html+='<div style="font-size:14px;color:#000;padding:4px 0;border-bottom:1px solid #f0f0f0">'+item+'</div>';
+      });
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  document.getElementById('travel-result-content').innerHTML=html;
+
+  const btn=document.getElementById('travel-plan-btn');
+  btn.disabled=false; btn.textContent='Plan My Wardrobe';
+}
+
+function resetTravel(){
+  travelType=null; travelLuggage=null;
+  document.getElementById('travel-destination').value='';
+  document.getElementById('travel-date-from').value='';
+  document.getElementById('travel-date-to').value='';
+  document.getElementById('travel-extra').value='';
+  document.getElementById('travel-weather-status').style.display='none';
+  document.querySelectorAll('[id^="ttype-"],[id^="tlug-"]').forEach(function(b){
+    b.style.background='';b.style.borderColor='';b.style.color='';
+  });
+  document.getElementById('travel-plan-btn').disabled=true;
+  document.getElementById('travel-error').style.display='none';
+  document.getElementById('travel-planner').style.display='block';
+  document.getElementById('travel-result').style.display='none';
+  document.getElementById('travel-result-content').innerHTML='';
 }
 </script>
 
