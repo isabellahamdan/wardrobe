@@ -118,7 +118,6 @@ async function loadInfluencers(){
   .pin-dot { width:10px; height:10px; border-radius:50%; border:1px solid #444; background:transparent; transition:all 0.2s; }
   .pin-dot.filled { background:#FFF; border-color:#FFF; }
   .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:220px; }
-  /* touch-action:manipulation removes the 300ms tap delay on mobile WITHOUT needing ontouchstart */
   .pin-btn { padding:18px; background:#111; border:1px solid #222; border-radius:2px; color:#FFF; font-size:22px; font-weight:400; cursor:pointer; font-family:'Cormorant Garamond',Georgia,serif; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
   .pin-btn:active { background:#222; }
   .pin-error { color:#c0392b; font-size:13px; margin-top:18px; font-style:italic; opacity:0; transition:opacity 0.3s; }
@@ -303,7 +302,6 @@ async function loadInfluencers(){
     <div class="pin-dot" id="dot-0"></div><div class="pin-dot" id="dot-1"></div>
     <div class="pin-dot" id="dot-2"></div><div class="pin-dot" id="dot-3"></div>
   </div>
-  <!-- FIX: Only onclick — touch-action:manipulation on .pin-btn already removes the 300ms tap delay -->
   <div class="pin-grid">
     <button class="pin-btn" onclick="enterPin('1')">1</button>
     <button class="pin-btn" onclick="enterPin('2')">2</button>
@@ -644,7 +642,7 @@ async function loadInfluencers(){
 // ── PIN ───────────────────────────────────────────────────
 const CORRECT_PIN='4212';
 let pinEntry='';
-let pinLocked=false; // prevent any input while animating wrong PIN
+let pinLocked=false;
 
 function enterPin(d){
   if(pinLocked||pinEntry.length>=4) return;
@@ -757,7 +755,6 @@ async function loadPiecePicker(){
 function renderPiecePicker(){
   const data=window._allPieces||[];
   const filter=window._pickerFilter||'All';
-  // Derive categories from descriptions (stored as "Name | Category | ...")
   const cats=['All','Top','Bottom','Dress','Shoes','Outerwear','Accessory','Bag','Jewellery'];
   const filtered=filter==='All'?data:data.filter(p=>{
     const parts=(p.description||'').split(' | ');
@@ -781,7 +778,6 @@ function renderPiecePicker(){
 function setPiecerFilter(cat,btn){
   window._pickerFilter=cat;
   renderPiecePicker();
-  // Re-highlight selected piece if still visible
   if(selectedPieceId) document.getElementById('picker-'+selectedPieceId)?.classList.add('selected');
 }
 
@@ -883,11 +879,9 @@ async function _doCompose(extra,anchorPiece){
   const liked=fbData?fbData.filter(f=>f.feedback==='like').map(f=>f.piece_name):[];
   const fbContext=fbData&&fbData.length>0?`\n\nFEEDBACK HISTORY:\nLikes: ${liked.slice(0,8).join(', ')}\nDislikes: ${fbData.filter(f=>f.feedback==='dislike').slice(0,8).map(f=>f.reason?`${f.piece_name} (${f.reason})`:f.piece_name).join(', ')}`:'';
 
-  // Build wardrobe list — full looks show their extracted pieces if available
   const allItems=archiveOnlyState?outfits:outfits;
 
   const piecesList=pieces.map(o=>{
-    const parts=o.description?.split(' | ')||[];
     return `[WARDROBE_ID:${o.id}] PIECE | ${o.occasion}/${o.weather||'?'} | ${o.description||'item'}`;
   }).join('\n');
 
@@ -895,7 +889,6 @@ async function _doCompose(extra,anchorPiece){
     let parsed=null;
     try{parsed=JSON.parse(o.description);}catch(e){}
     if(parsed&&parsed.pieces){
-      // Rich structured look — list each visible piece with the look's ID
       const piecesInLook=parsed.pieces.map(p=>`  → ${p.category}: ${p.description}`).join('\n');
       return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${parsed.description||''}\n${piecesInLook}\n  Style: ${parsed.style_notes||''}`;
     }
@@ -980,7 +973,6 @@ function renderOption(idx){
   const el=document.getElementById('option-'+idx);
   if(!el)return;
 
-  // Detect if all pieces point to same full-look item → show hero photo
   const usedIds=[...new Set(opt.pieces?.map(p=>p.wardrobeId).filter(Boolean))];
   const heroLook=usedIds.length===1?allOutfits.find(o=>o.id===usedIds[0]&&o.photo_type!=='Individual Piece'):null;
   const heroHtml=heroLook
@@ -998,7 +990,6 @@ function renderOption(idx){
     const isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     const safeId=`${idx}-${pi}`;
     const safeName=p.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
-    // Individual piece → show its photo. Full look ref → show once at top, dim indicator in card.
     const photoHtml=imgSrc
       ?isFullLookRef
         ?`<div class="piece-photo" style="background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px"><img src="${imgSrc}" style="width:90px;height:112px;object-fit:cover;object-position:top;opacity:0.35;display:block;position:absolute;"></div>`
@@ -1177,15 +1168,12 @@ async function analyzePhoto(imageData, isPiece, pieceName, categoryTag){
     const raw=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(raw);
     if(isPiece){
-      // For pieces: return flat description string folding in name+category
       const cat=categoryTag||parsed.category||'';
       return [pieceName,cat,parsed.description].filter(Boolean).join(' | ');
     } else {
-      // For full looks: return rich JSON string so AI can use it later
       return JSON.stringify(parsed);
     }
   }catch(e){
-    // Fallback to simple description
     try{
       const b64=imageData.startsWith('data:')?imageData.split(',')[1]:imageData;
       const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1326,7 +1314,6 @@ async function saveInspiration(){
       const text=document.getElementById('inspo-text-input').value.trim();
       if(!text && !url){ btn.disabled=false; btn.textContent='Save Inspiration'; return; }
 
-      // AI summary — richer when URL-only, tip extraction when text provided
       let aiSummary='';
       try{
         const isUrlOnly=!text&&url;
@@ -1344,7 +1331,6 @@ async function saveInspiration(){
         aiSummary=d.content.map(i=>i.text||'').join('').trim();
       }catch(e){}
 
-      // Prepend title/URL into text_content so nothing is lost
       const fullText=[inspoTitle, text, url].filter(Boolean).join('\n');
       const {error}=await sb.from('inspiration').insert({
         type:'text',
@@ -1375,7 +1361,6 @@ async function saveInspiration(){
         if(error){ lastError=error.message||JSON.stringify(error); } else { saved++; }
       }
     } else {
-      // No type selected
       fb.textContent='Please select Photo or Tip/Note first.';
       fb.className='feedback-msg error';
       fb.style.display='block';
@@ -1389,7 +1374,6 @@ async function saveInspiration(){
   if(saved>0){
     fb.textContent=`${saved} inspiration${saved>1?'s':''} saved!`;
     fb.className='feedback-msg success';
-    // Reset form
     document.getElementById('inspo-text-input').value='';
     document.getElementById('inspo-url-input').value='';
     if(document.getElementById('inspo-title-input')) document.getElementById('inspo-title-input').value='';
@@ -1412,7 +1396,6 @@ async function loadInspiration(){
   document.getElementById('inspo-grid').style.display='none';
   document.getElementById('inspo-empty').style.display='none';
   const {data:allData, error}=await sb.from('inspiration').select('*').order('created_at',{ascending:false});
-  // Exclude influencer entries from the regular grid
   const data=allData?(allData.filter(i=>!(i.text_content||'').startsWith('INFLUENCER:'))):null;
   document.getElementById('inspo-loading').style.display='none';
   if(error){ console.error('loadInspiration error:',error); document.getElementById('inspo-empty').style.display='block'; return; }
@@ -1422,8 +1405,6 @@ async function loadInspiration(){
   document.getElementById('inspo-grid').innerHTML=data.map(item=>{
     const safeTitle=(item.ai_summary||item.text_content||'').slice(0,40).replace(/`/g,'&#96;').replace(/"/g,'&quot;');
     const safeText=(item.text_content||'').replace(/`/g,'&#96;').replace(/"/g,'&quot;');
-    const displayTitle=item.ai_summary?.slice(0,60)||bodyText?.slice(0,60)||'Note';
-    // Extract URL from text_content (saved as last line)
     const lines=(item.text_content||'').split('\n');
     const urlLine=lines.find(l=>l.startsWith('http'));
     const bodyLines=lines.filter(l=>!l.startsWith('http'));
@@ -1471,7 +1452,6 @@ function editInspo(id,_unused,currentText){
 }
 
 async function saveInspoEdit(id){
-  const title=document.getElementById('edit-title-'+id).value.trim();
   const text=document.getElementById('edit-text-'+id).value.trim();
   const {error}=await sb.from('inspiration').update({text_content:text}).eq('id',id);
   if(!error) loadInspiration();
@@ -1491,9 +1471,7 @@ const editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'
 function openEditItem(id,occ,wx,desc){
   _editId=id; _editOcc=occ; _editWx=wx;
   document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
-  // Reset buttons
   document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-  // Highlight current
   document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(b.textContent===occ){b.style.background=editOccColors[occ]||'#000';b.style.borderColor=editOccColors[occ]||'#000';b.style.color='#fff';}});
   document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(b.textContent===wx){b.style.background=editWxColors[wx]||'#000';b.style.borderColor=editWxColors[wx]||'#000';b.style.color='#fff';}});
   const modal=document.getElementById('edit-modal');
@@ -1526,7 +1504,6 @@ async function saveInfluencer(){
   const handle=document.getElementById('influencer-handle').value.trim().replace(/^@/,'');
   const name=document.getElementById('influencer-name').value.trim();
   if(!handle) return;
-  // Store as inspiration with type='influencer'
   const {error}=await sb.from('inspiration').insert({
     type:'text',
     text_content:'INFLUENCER:@'+handle+(name?' | '+name:''),
