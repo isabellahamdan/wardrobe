@@ -9,91 +9,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-// ── EDIT GALLERY ITEM ─────────────────────────────────────
-let _editId=null, _editOcc=null, _editWx=null;
-const editOccColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A'};
-const editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
-
-function openEditItem(id,occ,wx,desc){
-  _editId=id; _editOcc=occ; _editWx=wx;
-  document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
-  // Reset buttons
-  document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-  // Highlight current
-  document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(b.textContent===occ){b.style.background=editOccColors[occ]||'#000';b.style.borderColor=editOccColors[occ]||'#000';b.style.color='#fff';}});
-  document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(b.textContent===wx){b.style.background=editWxColors[wx]||'#000';b.style.borderColor=editWxColors[wx]||'#000';b.style.color='#fff';}});
-  const modal=document.getElementById('edit-modal');
-  modal.style.display='flex';
-}
-function setEditTag(type,val,btn){
-  if(type==='occ'){
-    _editOcc=val;
-    document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-    btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';
-  } else {
-    _editWx=val;
-    document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-    btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';
-  }
-}
-function closeEditItem(){document.getElementById('edit-modal').style.display='none';}
-async function saveEditItem(){
-  const desc=document.getElementById('edit-desc-input').value.trim();
-  const {error}=await sb.from('outfits').update({occasion:_editOcc,weather:_editWx,description:desc||null}).eq('id',_editId);
-  if(!error){closeEditItem();loadGallery();}
-  else{alert('Save failed: '+error.message);}
-}
-
-// ── INFLUENCERS ───────────────────────────────────────────
-function showAddInfluencer(){ document.getElementById('add-influencer-form').style.display='block'; document.getElementById('influencer-handle').focus(); }
-function hideAddInfluencer(){ document.getElementById('add-influencer-form').style.display='none'; document.getElementById('influencer-handle').value=''; document.getElementById('influencer-name').value=''; }
-
-async function saveInfluencer(){
-  const handle=document.getElementById('influencer-handle').value.trim().replace(/^@/,'');
-  const name=document.getElementById('influencer-name').value.trim();
-  if(!handle) return;
-  // Store as inspiration with type='influencer'
-  const {error}=await sb.from('inspiration').insert({
-    type:'text',
-    text_content:'INFLUENCER:@'+handle+(name?' | '+name:''),
-    ai_summary:'Style inspiration: @'+handle+(name?' — '+name:'')
-  });
-  if(!error){ hideAddInfluencer(); loadInfluencers(); }
-  else alert('Save failed: '+error.message);
-}
-
-async function loadInfluencers(){
-  const {data}=await sb.from('inspiration').select('id,text_content,ai_summary').order('created_at',{ascending:false});
-  const influencers=(data||[]).filter(i=>(i.text_content||'').startsWith('INFLUENCER:'));
-  const grid=document.getElementById('influencers-grid');
-  const empty=document.getElementById('influencers-empty');
-  if(!influencers.length){ grid.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
-  grid.innerHTML=influencers.map(inf=>{
-    const parts=(inf.text_content||'').replace('INFLUENCER:','').split(' | ');
-    const handle=parts[0]||'';
-    const note=parts[1]||'';
-    const platform=handle.startsWith('@')?handle.substring(1):handle;
-    const igUrl=`https://www.instagram.com/${platform.replace('@','')}`;
-    const ttUrl=`https://www.tiktok.com/@${platform.replace('@','')}`;
-    return `<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid #e0e0e0;">
-      <div style="width:40px;height:40px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span style="color:#fff;font-size:16px;font-weight:700;font-style:italic">@</span>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:16px;font-weight:700;color:#000">${handle}</div>
-        ${note?`<div style="font-size:13px;color:#888;font-style:italic;margin-top:2px">${note}</div>`:''}
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <a href="${igUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">Instagram ↗</a>
-          <a href="${ttUrl}" target="_blank" rel="noopener" style="font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase;font-weight:700;text-decoration:none;border:1px solid #e0e0e0;padding:4px 10px;">TikTok ↗</a>
-        </div>
-      </div>
-      <button onclick="deleteInspo('${inf.id}')" style="width:28px;height:28px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>
-    </div>`;
-  }).join('');
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -541,19 +457,21 @@ async function loadInfluencers(){
             </div>
           </div>
 
-          <div class="section-label">Occasion</div>
-          <div class="tag-grid-4">
-            <button class="tag-btn" onclick="selectUploadTag('occasion','Day',this)">Day</button>
-            <button class="tag-btn" onclick="selectUploadTag('occasion','Work',this)">Work</button>
-            <button class="tag-btn" onclick="selectUploadTag('occasion','Night Out',this)">Night Out</button>
-            <button class="tag-btn" onclick="selectUploadTag('occasion','Event',this)">Event</button>
-          </div>
-          <div class="section-label">Weather</div>
-          <div class="tag-grid-4" style="margin-bottom:20px">
-            <button class="tag-btn" onclick="selectUploadTag('weather','Warm',this)">Warm</button>
-            <button class="tag-btn" onclick="selectUploadTag('weather','Mild',this)">Mild</button>
-            <button class="tag-btn" onclick="selectUploadTag('weather','Cold/Rain',this)">Cold/Rain</button>
-            <button class="tag-btn" onclick="selectUploadTag('weather','Winter',this)">Winter</button>
+          <div id="occasion-weather-section">
+            <div class="section-label">Occasion <span style="font-size:11px;color:#999;font-weight:400;letter-spacing:0.1em;text-transform:none;font-style:italic">— pick all that apply</span></div>
+            <div class="tag-grid-4">
+              <button class="tag-btn" onclick="toggleUploadTag('occasion','Day',this)">Day</button>
+              <button class="tag-btn" onclick="toggleUploadTag('occasion','Work',this)">Work</button>
+              <button class="tag-btn" onclick="toggleUploadTag('occasion','Night Out',this)">Night Out</button>
+              <button class="tag-btn" onclick="toggleUploadTag('occasion','Event',this)">Event</button>
+            </div>
+            <div class="section-label">Weather <span style="font-size:11px;color:#999;font-weight:400;letter-spacing:0.1em;text-transform:none;font-style:italic">— pick all that apply</span></div>
+            <div class="tag-grid-4" style="margin-bottom:20px">
+              <button class="tag-btn" onclick="toggleUploadTag('weather','Warm',this)">Warm</button>
+              <button class="tag-btn" onclick="toggleUploadTag('weather','Mild',this)">Mild</button>
+              <button class="tag-btn" onclick="toggleUploadTag('weather','Cold/Rain',this)">Cold/Rain</button>
+              <button class="tag-btn" onclick="toggleUploadTag('weather','Winter',this)">Winter</button>
+            </div>
           </div>
           <div style="font-size:13px;color:#999;font-style:italic;margin-bottom:16px;text-align:center;font-weight:600">AI auto-detects description on save</div>
           <button class="btn-primary" id="save-btn" onclick="saveToArchive()" disabled>Select tags above</button>
@@ -707,7 +625,9 @@ COMMUNICATION: Direct and pragmatic. For pieces NOT in her wardrobe, give a vivi
 
 // ── STATE ─────────────────────────────────────────────────
 let selectedOccasion=null,selectedWeatherStyle=null;
-let selectedOccasionTag=null,selectedWeatherTag=null,selectedCategoryTag=null;
+let selectedOccasionTags=[],selectedWeatherTags=[],selectedCategoryTag=null;
+const ACCESSORY_CATS=['Accessory','Bag','Jewellery'];
+function isAccessoryCategory(){ return ACCESSORY_CATS.includes(selectedCategoryTag); }
 let uploadArchiveType='looks';
 let queue=[],currentOptions=[],currentOptionIdx=0,chatHistory=[];
 let filterOccasion='All',filterWeather='All';
@@ -1120,20 +1040,45 @@ function renderQueue(){
 }
 function removeFromQueue(id){queue=queue.filter(q=>q.id!==id);renderQueue();}
 
-function selectUploadTag(type,value,btn){
+function toggleUploadTag(type,value,btn){
   const colors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A',Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A',Top:'#222',Bottom:'#2E3F6F',Dress:'#6B2D3E',Shoes:'#4A4A6A',Outerwear:'#4A5A7A',Accessory:'#555',Bag:'#3A3530',Jewellery:'#6B2D3E'};
-  document.querySelectorAll('.tag-btn').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(`'${type}'`)){b.style.background='';b.style.borderColor='';b.style.color='';}});
-  btn.style.background=colors[value]||'#000';btn.style.borderColor=colors[value]||'#000';btn.style.color='#FFF';
-  if(type==='occasion') selectedOccasionTag=value;
-  else if(type==='weather') selectedWeatherTag=value;
-  else if(type==='category') selectedCategoryTag=value;
+  if(type==='occasion'){
+    if(selectedOccasionTags.includes(value)){
+      selectedOccasionTags=selectedOccasionTags.filter(v=>v!==value);
+      btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    } else {
+      selectedOccasionTags.push(value);
+      btn.style.background=colors[value]||'#000';btn.style.borderColor=colors[value]||'#000';btn.style.color='#FFF';
+    }
+  } else if(type==='weather'){
+    if(selectedWeatherTags.includes(value)){
+      selectedWeatherTags=selectedWeatherTags.filter(v=>v!==value);
+      btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    } else {
+      selectedWeatherTags.push(value);
+      btn.style.background=colors[value]||'#000';btn.style.borderColor=colors[value]||'#000';btn.style.color='#FFF';
+    }
+  } else if(type==='category'){
+    // Single select for category
+    document.querySelectorAll('.tag-btn').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'category'")){b.style.background='';b.style.borderColor='';b.style.color='';}});
+    selectedCategoryTag=value;
+    btn.style.background=colors[value]||'#000';btn.style.borderColor=colors[value]||'#000';btn.style.color='#FFF';
+    // Show/hide occasion+weather section based on accessory
+    const isAcc=ACCESSORY_CATS.includes(value);
+    document.getElementById('occasion-weather-section').style.display=isAcc?'none':'block';
+    if(isAcc){ selectedOccasionTags=[]; selectedWeatherTags=[]; }
+  }
   updateSaveBtn();
 }
+// Keep backward compat alias
+function selectUploadTag(type,value,btn){ toggleUploadTag(type,value,btn); }
 
 function updateSaveBtn(){
   const btn=document.getElementById('save-btn');
   const isPieces=uploadArchiveType==='pieces';
-  const ready=selectedOccasionTag&&selectedWeatherTag&&queue.length>0&&(!isPieces||selectedCategoryTag);
+  const isAcc=isPieces&&ACCESSORY_CATS.includes(selectedCategoryTag);
+  const tagsOk=isAcc?(selectedCategoryTag!=null):(selectedOccasionTags.length>0&&selectedWeatherTags.length>0);
+  const ready=tagsOk&&queue.length>0&&(!isPieces||selectedCategoryTag);
   btn.disabled=!ready;
   btn.textContent=ready?`Save ${queue.length} ${queue.length===1?(isPieces?'Piece':'Look'):(isPieces?'Pieces':'Looks')}`:'Select tags above';
 }
@@ -1197,8 +1142,11 @@ async function saveToArchive(){
       const compressed=await compressImage(item.img);
       btn.textContent=`Analysing ${queue.indexOf(item)+1}/${queue.length}...`;
       const fullDesc=await analyzePhoto(compressed,isPieces,pieceName,selectedCategoryTag);
+      const isAcc=isPieces&&ACCESSORY_CATS.includes(selectedCategoryTag);
+      const occVal=isAcc?'All':selectedOccasionTags.join(',');
+      const wxVal=isAcc?'All':selectedWeatherTags.join(',');
       const {error}=await sb.from('outfits').insert({
-        occasion:selectedOccasionTag,weather:selectedWeatherTag,
+        occasion:occVal,weather:wxVal,
         photo_type:isPieces?'Individual Piece':'Full Outfit',
         description:fullDesc,image_url:'',image_data:compressed
       });
@@ -1210,7 +1158,8 @@ async function saveToArchive(){
   if(saved>0){fb.textContent=`${saved} ${saved===1?(isPieces?'piece':'look'):(isPieces?'pieces':'looks')} saved.`;fb.className='feedback-msg success';}
   else{fb.textContent=`Error: ${lastError?lastError.message||JSON.stringify(lastError):'Unknown'}`;fb.className='feedback-msg error';}
   fb.style.display='block';setTimeout(()=>fb.style.display='none',4000);
-  queue=[];selectedOccasionTag=null;selectedWeatherTag=null;selectedCategoryTag=null;
+  queue=[];selectedOccasionTags=[];selectedWeatherTags=[];selectedCategoryTag=null;
+  document.getElementById('occasion-weather-section').style.display='block';
   document.querySelectorAll('.tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
   if(document.getElementById('piece-name-input')) document.getElementById('piece-name-input').value='';
   renderQueue();
@@ -1234,9 +1183,13 @@ async function loadGallery(){
   try{
     let query=sb.from('outfits').select('*').order('created_at',{ascending:false});
     query=query.eq('photo_type',archiveViewType==='pieces'?'Individual Piece':'Full Outfit');
-    if(filterOccasion!=='All') query=query.eq('occasion',filterOccasion);
-    if(filterWeather!=='All') query=query.eq('weather',filterWeather);
-    const {data,error}=await query;
+    const {data:rawData,error}=await query;
+    // Client-side filter to handle comma-joined multi-tags and 'All' (accessories)
+    const data=rawData?rawData.filter(item=>{
+      const occMatch=filterOccasion==='All'||!item.occasion||item.occasion==='All'||item.occasion.split(',').includes(filterOccasion);
+      const wxMatch=filterWeather==='All'||!item.weather||item.weather==='All'||item.weather.split(',').includes(filterWeather);
+      return occMatch&&wxMatch;
+    }):null;
     if(error)throw error;
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){document.getElementById('gallery-empty').style.display='block';return;}
@@ -1464,34 +1417,50 @@ async function deleteInspo(id){
 }
 
 // ── EDIT GALLERY ITEM ─────────────────────────────────────
-let _editId=null, _editOcc=null, _editWx=null;
+let _editId=null, _editOccs=[], _editWxs=[];
 const editOccColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A'};
 const editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
 
 function openEditItem(id,occ,wx,desc){
-  _editId=id; _editOcc=occ; _editWx=wx;
+  _editId=id;
+  _editOccs=occ?occ.split(','):[];
+  _editWxs=wx?wx.split(','):[];
   document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
   document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-  document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(b.textContent===occ){b.style.background=editOccColors[occ]||'#000';b.style.borderColor=editOccColors[occ]||'#000';b.style.color='#fff';}});
-  document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(b.textContent===wx){b.style.background=editWxColors[wx]||'#000';b.style.borderColor=editWxColors[wx]||'#000';b.style.color='#fff';}});
+  document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{if(_editOccs.includes(b.textContent.trim())){b.style.background=editOccColors[b.textContent.trim()]||'#000';b.style.borderColor=editOccColors[b.textContent.trim()]||'#000';b.style.color='#fff';}});
+  document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{if(_editWxs.includes(b.textContent.trim())){b.style.background=editWxColors[b.textContent.trim()]||'#000';b.style.borderColor=editWxColors[b.textContent.trim()]||'#000';b.style.color='#fff';}});
+  // Hide occ/wx for accessories (occasion=All)
+  const isAcc=occ==='All';
+  document.getElementById('edit-occ-section').style.display=isAcc?'none':'block';
+  document.getElementById('edit-wx-section').style.display=isAcc?'none':'block';
   const modal=document.getElementById('edit-modal');
   modal.style.display='flex';
 }
 function setEditTag(type,val,btn){
   if(type==='occ'){
-    _editOcc=val;
-    document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-    btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';
+    if(_editOccs.includes(val)){
+      _editOccs=_editOccs.filter(v=>v!==val);
+      btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    } else {
+      _editOccs.push(val);
+      btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';
+    }
   } else {
-    _editWx=val;
-    document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
-    btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';
+    if(_editWxs.includes(val)){
+      _editWxs=_editWxs.filter(v=>v!==val);
+      btn.style.background='';btn.style.borderColor='';btn.style.color='';
+    } else {
+      _editWxs.push(val);
+      btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';
+    }
   }
 }
 function closeEditItem(){document.getElementById('edit-modal').style.display='none';}
 async function saveEditItem(){
   const desc=document.getElementById('edit-desc-input').value.trim();
-  const {error}=await sb.from('outfits').update({occasion:_editOcc,weather:_editWx,description:desc||null}).eq('id',_editId);
+  const occVal=_editOccs.length>0?_editOccs.join(','):'';
+  const wxVal=_editWxs.length>0?_editWxs.join(','):'';
+  const {error}=await sb.from('outfits').update({occasion:occVal,weather:wxVal,description:desc||null}).eq('id',_editId);
   if(!error){closeEditItem();loadGallery();}
   else{alert('Save failed: '+error.message);}
 }
@@ -1552,20 +1521,24 @@ async function loadInfluencers(){
 
     <input type="text" id="edit-desc-input" placeholder="Name / description..." style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:18px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;margin-bottom:24px;background:transparent;color:#000;">
 
-    <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:10px">Occasion</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:20px" id="edit-occ-grid">
-      <button class="tag-btn" onclick="setEditTag('occ','Day',this)">Day</button>
-      <button class="tag-btn" onclick="setEditTag('occ','Work',this)">Work</button>
-      <button class="tag-btn" onclick="setEditTag('occ','Night Out',this)">Night Out</button>
-      <button class="tag-btn" onclick="setEditTag('occ','Event',this)">Event</button>
+    <div id="edit-occ-section">
+      <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:4px">Occasion <span style="font-size:11px;color:#999;font-weight:400;letter-spacing:0.1em;text-transform:none;font-style:italic">— pick all that apply</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:20px" id="edit-occ-grid">
+        <button class="tag-btn" onclick="setEditTag('occ','Day',this)">Day</button>
+        <button class="tag-btn" onclick="setEditTag('occ','Work',this)">Work</button>
+        <button class="tag-btn" onclick="setEditTag('occ','Night Out',this)">Night Out</button>
+        <button class="tag-btn" onclick="setEditTag('occ','Event',this)">Event</button>
+      </div>
     </div>
 
-    <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:10px">Weather</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:28px" id="edit-wx-grid">
-      <button class="tag-btn" onclick="setEditTag('wx','Warm',this)">Warm</button>
-      <button class="tag-btn" onclick="setEditTag('wx','Mild',this)">Mild</button>
-      <button class="tag-btn" onclick="setEditTag('wx','Cold/Rain',this)">Cold/Rain</button>
-      <button class="tag-btn" onclick="setEditTag('wx','Winter',this)">Winter</button>
+    <div id="edit-wx-section">
+      <div style="font-size:12px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:4px">Weather <span style="font-size:11px;color:#999;font-weight:400;letter-spacing:0.1em;text-transform:none;font-style:italic">— pick all that apply</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:28px" id="edit-wx-grid">
+        <button class="tag-btn" onclick="setEditTag('wx','Warm',this)">Warm</button>
+        <button class="tag-btn" onclick="setEditTag('wx','Mild',this)">Mild</button>
+        <button class="tag-btn" onclick="setEditTag('wx','Cold/Rain',this)">Cold/Rain</button>
+        <button class="tag-btn" onclick="setEditTag('wx','Winter',this)">Winter</button>
+      </div>
     </div>
 
     <div style="display:flex;gap:2px">
