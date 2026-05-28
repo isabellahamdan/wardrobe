@@ -269,6 +269,10 @@
             <span class="mode-label">Start from a piece</span>
             <span class="mode-sub">Pick one item from your archive, I build around it</span>
           </button>
+          <button class="mode-btn" onclick="selectStyleMode('surprise',this)" style="border-left:3px solid #6B2D3E;">
+            <span class="mode-label" style="color:#6B2D3E;">Surprise me</span>
+            <span class="mode-sub">I pick occasion & weather, you just get dressed</span>
+          </button>
         </div>
       </div>
 
@@ -752,15 +756,38 @@ function switchTab(tab,btn){
 // ── STYLE ME ─────────────────────────────────────────────
 function selectStyleMode(mode,btn){
   document.getElementById('stylist-mode-select').style.display='none';
-  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   if(mode==='scratch'){
     document.getElementById('stylist-scratch').style.display='block';
     document.getElementById('stylist-piece').style.display='none';
-  } else {
+  } else if(mode==='piece'){
     document.getElementById('stylist-piece').style.display='block';
     document.getElementById('stylist-scratch').style.display='none';
     loadPiecePicker();
+  } else if(mode==='surprise'){
+    var occasions=['Day','Work','Night Out','Event'];
+    selectedOccasion=occasions[Math.floor(Math.random()*occasions.length)];
+    document.getElementById('stylist-scratch').style.display='block';
+    document.getElementById('stylist-piece').style.display='none';
+    document.querySelectorAll('.occasion-btn').forEach(function(b){
+      var lbl=b.querySelector('.occ-label');
+      if(lbl&&lbl.textContent===selectedOccasion) b.classList.add('active');
+    });
+    autoDetectWeather().then(function(){
+      if(!selectedWeatherStyle){
+        var weathers=['Warm','Mild','Cold/Rain','Winter'];
+        selectedWeatherStyle=weathers[Math.floor(Math.random()*weathers.length)];
+        document.querySelectorAll('.weather-btn').forEach(function(b){
+          if(b.textContent.trim()===selectedWeatherStyle) b.classList.add('active');
+        });
+      }
+      checkCompose();
+      setTimeout(function(){
+        var cb=document.getElementById('compose-btn');
+        if(cb&&!cb.disabled) cb.click();
+      },600);
+    });
   }
 }
 
@@ -929,21 +956,23 @@ async function _doCompose(extra,anchorPiece){
     return `[WARDROBE_ID:${o.id}] PIECE | ${o.occasion}/${o.weather||'?'} | ${o.description||'item'}`;
   }).join('\n');
 
-  const looksList=looks.map(o=>{
-    let parsed=null;
+  const looksList=looks.map(function(o){
+    var parsed=null;
     try{parsed=JSON.parse(o.description);}catch(e){}
     if(parsed&&parsed.pieces){
-      const piecesInLook=parsed.pieces.map(function(p){return '  → '+p.category+': '+p.description;}).join('\n');
-      return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${parsed.description||''}\n${piecesInLook}\n  Style: ${parsed.style_notes||''}`;
+      var piecesInLook=parsed.pieces.map(function(p){return '  → '+p.category+': '+p.description;}).join('\n');
+      return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(parsed.description||'')+'\n'+piecesInLook+'\n  Style: '+(parsed.style_notes||'');
     }
-    return `[WARDROBE_ID:${o.id}] FULL LOOK | ${o.occasion}/${o.weather||'?'} | ${o.description||'outfit'}`;
+    // Plain text description — still mine it for pieces
+    var desc=o.description||'outfit';
+    return '[WARDROBE_ID:'+o.id+'] FULL LOOK (MINE FOR PIECES) | '+o.occasion+'/'+(o.weather||'?')+' | '+desc;
   }).join('\n');
 
   const anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') — build the entire outfit around this.':'';
 
   const archiveInstruction=archiveOnlyState
     ?`ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.`
-    :`PREFER archive items when they fit the occasion and weather. Reference them with their exact WARDROBE_ID. For FULL LOOK items you can suggest the whole look as one option, OR mix individual pieces from it with other archive pieces. For pieces not in archive, set wardrobeId null and describe vividly.`;
+    :`PREFER her archive above all. For every FULL LOOK (mirror photo), extract EACH visible piece separately — top, bottom, shoes — each gets its own slot with that look's WARDROBE_ID. Do NOT suggest "wear this whole look" unless you truly want all pieces together. Mix pieces from different looks and individual pieces freely. For pieces not in archive set wardrobeId null and describe vividly.`;
 
   const prompt=`Style Isabella for: ${selectedOccasion} / ${selectedWeatherStyle} weather.
 ${extra?'HER NOTES: '+extra:''}
@@ -962,7 +991,7 @@ ${getRecentlyUsedContext()}
 
 RULES — follow all of these:
 1. TIPS ARE LAW: The style rules and tips above are her personal style bible. Apply them directly. If a tip says "knee-high boots elevate any look" — use knee-high boots. If feedback says she disliked black in warm weather — don't suggest black tops in warm weather.
-2. MINE FULL LOOKS: Every mirror photo contains multiple borrowable pieces. Extract each visible item separately with the same WARDROBE_ID. A photo showing blazer + trousers + shoes = three separate pieces you can use.
+2. MINE FULL LOOKS (CRITICAL): Every FULL LOOK photo is a source of individual pieces. ALWAYS extract visible items separately. A photo showing blazer + trousers + shoes = you can suggest the blazer alone as Top [WARDROBE_ID:X], the trousers alone as Bottom [WARDROBE_ID:X], the shoes alone as Shoes [WARDROBE_ID:X]. Even plain-text descriptions of looks contain pieces you can extract and mix.
 3. MIX SOURCES: Combine pieces from different WARDROBE_IDs. Top from one photo + trousers from a piece + shoes from another photo = one great outfit.
 4. TWO DIFFERENT LOOKS: The two options must have clearly different silhouettes and color stories. Not two versions of the same outfit.
 5. OMIT EMPTY: If outerwear or accessories aren't needed, leave them out entirely. No empty slots, no "N/A".
@@ -1788,7 +1817,7 @@ function selectTravelTag(type,val,btn){
   const grid=type==='type'
     ?document.querySelectorAll('[id^="ttype-"]')
     :document.querySelectorAll('[id^="tlug-"]');
-  grid.forEach(b=>{b.style.background='';b.style.borderColor='';b.style.color='';});
+  grid.forEach(function(b){b.style.background='';b.style.borderColor='';b.style.color='';});
   btn.style.background=colors[val]||'#000';btn.style.borderColor=colors[val]||'#000';btn.style.color='#FFF';
   if(type==='type') travelType=val;
   else travelLuggage=val;
