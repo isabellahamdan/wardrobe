@@ -743,7 +743,7 @@ let inspoType=null,inspoQueue=[];
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  ['stylist','wardrobe','inspiration'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'block':'none');
+  ['stylist','wardrobe','inspiration','travel'].forEach(function(t){document.getElementById('tab-'+t).style.display=t===tab?'block':'none';});
   if(tab==='wardrobe') loadGallery();
   if(tab==='inspiration') loadInspiration();
   if(tab==='travel'){ const t=new Date().toISOString().split('T')[0]; const df=document.getElementById('travel-date-from'); if(df&&!df.value) df.min=t; }
