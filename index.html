@@ -1554,7 +1554,7 @@ async function loadGallery(){
   document.getElementById('gallery-empty').style.display='none';
   try{
     var isPiecesView=archiveViewType==='pieces';
-    var resp=await sb.from('outfits').select('id,photo_type,description,occasion,weather,image_url,image_data').order('created_at',{ascending:false}).limit(300);
+    var resp=await sb.from('outfits').select('id,photo_type,description,occasion,weather,image_url').order('created_at',{ascending:false}).limit(300);
     if(resp.error)throw new Error(resp.error.message||JSON.stringify(resp.error));
     var allRows=resp.data||[];
     document.getElementById('archive-tab').textContent='Archive \u2014 '+allRows.length;
@@ -1586,23 +1586,28 @@ async function loadGallery(){
     }
     document.getElementById('gallery-grid').style.display='grid';
     document.getElementById('gallery-grid').innerHTML=data.map(function(item){
-      var src=item.image_data||item.image_url||'';
       var nameHtml='';
       if(isPiecesView&&item.description)nameHtml='<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:14px;font-weight:700;color:#fff;line-height:1.3">'+(item.description.split(' | ')[0]||'')+'</div>';
       var safeOcc=(item.occasion||'').replace(/'/g,"\\'");
       var safeWx=(item.weather||'').replace(/'/g,"\\'");
       var safeDesc=(item.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative">'
-        +'<img class="gallery-img" src="'+src+'" loading="lazy" onerror="this.style.display=\'none\'">'
+        +'<img class="gallery-img" id="img-'+item.id+'" src="" style="background:#f0f0f0" loading="lazy">'
         +nameHtml
         +'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+safeOcc+'\',\''+safeWx+'\',\''+safeDesc+'\')">&#9998;&#65039;</button>'
         +'<button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button>'
         +'</div></div>';
     }).join('');
+    var ids=data.map(function(d){return d.id;});
+    for(var bi=0;bi<ids.length;bi+=20){
+      var batch=ids.slice(bi,bi+20);
+      var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',batch);
+      if(ir.data){ir.data.forEach(function(row){var el=document.getElementById('img-'+row.id);if(el){el.src=row.image_data||row.image_url||'';}});}
+    }
   }catch(e){
     document.getElementById('gallery-loading').style.display='none';
     document.getElementById('gallery-empty').style.display='block';
-    document.getElementById('gallery-empty').querySelector('.empty-text').textContent='Error loading: '+(e.message||JSON.stringify(e));
+    document.getElementById('gallery-empty').querySelector('.empty-text').textContent='Error: '+(e.message||JSON.stringify(e));
   }
 }
 async function deleteItem(id){
