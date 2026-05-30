@@ -508,6 +508,14 @@ button{cursor:pointer}
             <button class="filter-btn" onclick="filterBy('category','Bag',this)">Bag</button>
             <button class="filter-btn" onclick="filterBy('category','Jewellery',this)">Jewellery</button>
           </div>
+          <div class="section-label" style="margin-bottom:8px;margin-top:12px">Occasion</div>
+          <div class="filter-row" id="pieces-occ-row">
+            <button class="filter-btn active" onclick="filterBy('occasion','All',this)">All</button>
+            <button class="filter-btn" onclick="filterBy('occasion','Day',this)">Day</button>
+            <button class="filter-btn" onclick="filterBy('occasion','Work',this)">Work</button>
+            <button class="filter-btn" onclick="filterBy('occasion','Night Out',this)">Night Out</button>
+            <button class="filter-btn" onclick="filterBy('occasion','Event',this)">Event</button>
+          </div>
           <div class="section-label" style="margin-bottom:8px;margin-top:12px">Weather</div>
           <div class="filter-row" id="pieces-wx-row">
             <button class="filter-btn active" onclick="filterBy('weather','All',this)">All</button>
@@ -1193,7 +1201,7 @@ function switchArchiveType(type,btn){
   document.getElementById('looks-filters').style.display=type==='looks'?'block':'none';
   document.getElementById('pieces-filters').style.display=type==='pieces'?'block':'none';
   filterOccasion='All';filterWeather='All';filterCategory='All';
-  document.querySelectorAll('#looks-filters .filter-btn,#pieces-cat-row .filter-btn,#pieces-wx-row .filter-btn').forEach(function(b){b.classList.remove('active');if(b.textContent==='All')b.classList.add('active');});
+  document.querySelectorAll('#looks-filters .filter-btn,#pieces-cat-row .filter-btn,#pieces-occ-row .filter-btn,#pieces-wx-row .filter-btn').forEach(function(b){b.classList.remove('active');if(b.textContent==='All')b.classList.add('active');});
   loadGallery();
 }
 function selectUploadArchiveType(type,btn){
@@ -1570,8 +1578,9 @@ async function loadGallery(){
           var parts=(item.description||'').split('|');
           return parts.some(function(p){return p.trim().toLowerCase()===filterCategory.toLowerCase();});
         }());
+        var occOk=filterOccasion==='All'||occ===''||occ.toLowerCase()==='all'||occ.split(',').some(function(o){return o.trim().toLowerCase()===filterOccasion.toLowerCase();});
         var wxOk=filterWeather==='All'||wx===''||wx.toLowerCase()==='all'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
-        return catOk&&wxOk;
+        return catOk&&occOk&&wxOk;
       }
       var occOk=filterOccasion==='All'||occ===''||occ.toLowerCase()==='all'||occ.split(',').some(function(o){return o.trim().toLowerCase()===filterOccasion.toLowerCase();});
       var wxOk=filterWeather==='All'||wx===''||wx.toLowerCase()==='all'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
@@ -1580,7 +1589,7 @@ async function loadGallery(){
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
-      var isFiltered=(isPiecesView&&(filterCategory!=='All'||filterWeather!=='All'))||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
+      var isFiltered=(isPiecesView&&(filterCategory!=='All'||filterOccasion!=='All'||filterWeather!=='All'))||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
       document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter. ('+typeRows.length+' total)':'Nothing here yet. (DB: '+allRows.length+', type: '+typeRows.length+')';
       return;
     }
