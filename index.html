@@ -1230,50 +1230,6 @@ async function loadGallery(){
     if(resp.error)throw resp.error;
     var allRows=resp.data||[];
 
-    // Log raw data to console for debugging
-    console.log('=== ARCHIVE DEBUG ===');
-    console.log('Total rows:', allRows.length);
-    var ptCounts={};
-    allRows.forEach(function(r){var pt=r.photo_type||'(null)';ptCounts[pt]=(ptCounts[pt]||0)+1;});
-    console.log('photo_type breakdown:', JSON.stringify(ptCounts));
-    console.log('Sample occasions:', allRows.slice(0,5).map(function(r){return r.occasion+'|'+r.weather+'|'+r.photo_type;}));
-
-    // Separate by type — match loosely (trim + case-insensitive) to handle DB inconsistencies
-    var typeRows=allRows.filter(function(item){
-      var pt=(item.photo_type||'').trim().toLowerCase();
-      return isPiecesView?(pt==='individual piece'):(pt!=='individual piece');
-    });
-    console.log('typeRows (isPiecesView='+isPiecesView+'):', typeRows.length);
-
-    // Update total count in tab label (always shows full type count, not filtered)
-    document.getElementById('archive-tab').textContent='Archive — '+allRows.length;
-
-    // Apply filters
-    var data=typeRows.filter(function(item){
-      if(isPiecesView){
-        if(filterCategory==='All')return true;
-        var parts=(item.description||'').split(' | ');
-        return parts.some(function(p){return p.trim().toLowerCase()===filterCategory.toLowerCase();});
-      }
-      // Looks: occasion + weather filter
-      var occ=(item.occasion||'').trim();
-      var wx=(item.weather||'').trim();
-      var occMatch=filterOccasion==='All'||occ===''||occ==='All'||occ.split(',').some(function(o){return o.trim().toLowerCase()===filterOccasion.toLowerCase();});
-      var wxMatch=filterWeather==='All'||wx===''||wx==='All'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
-      var pass=occMatch&&wxMatch;
-      if(!pass&&(filterOccasion!=='All'||filterWeather!=='All')){
-        console.log('FILTERED OUT: occ="'+occ+'" wx="'+wx+'" filterOcc='+filterOccasion+' filterWx='+filterWeather+' occMatch='+occMatch+' wxMatch='+wxMatch);
-      }
-      return pass;
-    });
-    console.log('After filter (occ='+filterOccasion+', wx='+filterWeather+'):', data.length);
-
-    // Show on-screen debug panel so we can diagnose on iPhone without DevTools
-    var debugEl=document.getElementById('gallery-debug');
-    if(!debugEl){debugEl=document.createElement('div');debugEl.id='gallery-debug';debugEl.style.cssText='font-size:11px;font-family:monospace;background:#fffbe6;border:1px solid #e0c000;padding:12px;margin-bottom:12px;line-height:1.7;word-break:break-all;';document.getElementById('gallery-grid').parentNode.insertBefore(debugEl,document.getElementById('gallery-grid'));}
-    var ptList=Object.keys(ptCounts).map(function(k){return k+'('+ptCounts[k]+')'}).join(', ');
-    var sample=allRows.slice(0,3).map(function(r){return 'occ="'+(r.occasion||'null')+'" wx="'+(r.weather||'null')+'" type="'+(r.photo_type||'null')+'"';}).join('<br>');
-    debugEl.innerHTML='<b>Total rows: '+allRows.length+'</b><br>photo_types: '+ptList+'<br>typeRows(isPieces='+isPiecesView+'): '+typeRows.length+'<br>After filter(occ='+filterOccasion+',wx='+filterWeather+'): '+data.length+'<br><br><b>First 3 rows:</b><br>'+sample+'<br><br><button onclick="document.getElementById('gallery-debug').style.display='none'" style="font-size:11px;padding:4px 10px;cursor:pointer;">Close</button>';
 
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){
