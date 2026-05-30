@@ -1282,16 +1282,19 @@ var BATCH_OCCASIONS=['Day','Work','Night Out','Event'];
 var BATCH_WEATHERS=['Warm','Mild','Cold/Rain','Winter'];
 
 function handleBatchFiles(files){
-  document.getElementById('batch-file-input').value='';
   var newFiles=Array.from(files);
+  setTimeout(function(){
+    var inp=document.getElementById('batch-file-input');
+    if(inp)inp.value='';
+  },500);
   if(!newFiles.length)return;
   document.getElementById('batch-intro').style.display='none';
   document.getElementById('batch-review-section').style.display='block';
   var progressBar=document.getElementById('batch-analyzing-bar');
   progressBar.style.display='block';
-  var pending=newFiles.length;
   var done=0;
-  document.getElementById('batch-progress-text').textContent='Analysing 0/'+newFiles.length+'...';
+  var total=newFiles.length;
+  document.getElementById('batch-progress-text').textContent='Analysing 0/'+total+'...';
   newFiles.forEach(function(file){
     var reader=new FileReader();
     reader.onload=function(e){
@@ -1301,8 +1304,8 @@ function handleBatchFiles(files){
       renderBatchCard(item);
       analyzeBatchItem(item,function(){
         done++;
-        document.getElementById('batch-progress-text').textContent='Analysing '+done+'/'+newFiles.length+'...';
-        if(done>=newFiles.length){
+        document.getElementById('batch-progress-text').textContent='Analysing '+done+'/'+total+'...';
+        if(done>=total){
           progressBar.style.display='none';
           updateBatchSaveBtn();
         }
@@ -1437,9 +1440,13 @@ async function analyzeBatchItem(item,callback){
     var compressed=await compressImage(item.img,700);
     var b64=compressed.startsWith('data:')?compressed.split(',')[1]:compressed;
     var sysPrompt='You are a fashion analyst for a personal wardrobe app. Analyze this clothing item photo.\n'
+      +'IMPORTANT CONTEXT: These photos are taken hanging on a door. Use the door frame, door panel lines, and hinges as size/proportion references to judge the true silhouette, length, and fit of the garment.\n'
+      +'- Door panel height ~200cm: use this to estimate if a trouser is full-length, cropped, or wide-leg\n'
+      +'- Door width ~80cm: use this to judge how voluminous or fitted a piece is\n'
+      +'- Note fabric drape against the flat door surface to assess weight and structure\n'
       +'Respond ONLY in JSON with no markdown:\n'
       +'{\n'
-      +'"name":"[Color] [Material] [Item Type] e.g. Ivory Linen Wide-Leg Trousers",\n'
+      +'"name":"[Color] [Material] [Silhouette/Cut] [Item Type] e.g. Ivory Linen Wide-Leg Trousers, Cropped Navy Cotton Blazer",\n'
       +'"category":"Top|Bottom|Dress|Shoes|Outerwear|Accessory|Bag|Jewellery",\n'
       +'"occasions":["Day","Work","Night Out","Event"] (pick all that apply),\n'
       +'"weathers":["Warm","Mild","Cold/Rain","Winter"] (pick all that apply based on material/weight),\n'
@@ -1447,7 +1454,7 @@ async function analyzeBatchItem(item,callback){
       +'}\n'
       +'MATERIAL RULES: linen/cotton/light = Warm. Medium fabrics = Warm+Mild. Wool/thick knit = Cold/Rain+Winter. Heavy coat = Winter.\n'
       +'OCCASION RULES: Trousers/blouses/blazers = Work+Day+Night Out. Jeans/casual = Day. Party dress = Night Out+Event. Accessories/Bags/Jewellery = skip occasions and weathers entirely, just categorize.\n'
-      +'Always include color and material in the name.';
+      +'Always include color, material, AND silhouette/cut in the name (e.g. wide-leg, cropped, midi, fitted, oversized).';
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:200,system:sysPrompt,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze this clothing item.'}]}]})});
     var data=await res.json();
     var raw=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
