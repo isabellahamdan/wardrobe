@@ -1554,8 +1554,8 @@ async function loadGallery(){
   document.getElementById('gallery-empty').style.display='none';
   try{
     var isPiecesView=archiveViewType==='pieces';
-    var resp=await sb.from('outfits').select('*').order('created_at',{ascending:false}).limit(300);
-    if(resp.error)throw resp.error;
+    var resp=await sb.from('outfits').select('id,photo_type,description,occasion,weather,image_url,image_data').order('created_at',{ascending:false}).limit(300);
+    if(resp.error)throw new Error(resp.error.message||JSON.stringify(resp.error));
     var allRows=resp.data||[];
     document.getElementById('archive-tab').textContent='Archive \u2014 '+allRows.length;
     var typeRows=allRows.filter(function(item){
@@ -1581,18 +1581,19 @@ async function loadGallery(){
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
       var isFiltered=(isPiecesView&&(filterCategory!=='All'||filterWeather!=='All'))||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
-      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter. ('+typeRows.length+' total in this view)':'Nothing here yet. ('+allRows.length+' total in DB, '+typeRows.length+' of this type)';
+      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter. ('+typeRows.length+' total)':'Nothing here yet. (DB: '+allRows.length+', type: '+typeRows.length+')';
       return;
     }
     document.getElementById('gallery-grid').style.display='grid';
     document.getElementById('gallery-grid').innerHTML=data.map(function(item){
+      var src=item.image_data||item.image_url||'';
       var nameHtml='';
       if(isPiecesView&&item.description)nameHtml='<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:14px;font-weight:700;color:#fff;line-height:1.3">'+(item.description.split(' | ')[0]||'')+'</div>';
       var safeOcc=(item.occasion||'').replace(/'/g,"\\'");
       var safeWx=(item.weather||'').replace(/'/g,"\\'");
       var safeDesc=(item.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative">'
-        +'<img class="gallery-img" src="'+(item.image_data||item.image_url)+'" loading="lazy" onerror="this.style.display=\'none\'">'
+        +'<img class="gallery-img" src="'+src+'" loading="lazy" onerror="this.style.display=\'none\'">'
         +nameHtml
         +'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+safeOcc+'\',\''+safeWx+'\',\''+safeDesc+'\')">&#9998;&#65039;</button>'
         +'<button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button>'
