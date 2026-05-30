@@ -811,21 +811,44 @@ function startVoiceListening(){
   document.getElementById('voice-transcript-live').textContent='';
   voiceModeTranscript='';
   var SpeechRec=getSpeechRecognition();
-  if(!SpeechRec){document.getElementById('voice-transcript-live').textContent='Voice input not supported. Please type in the text box instead.';return;}
-  voiceModeActive=true;voiceModeRecognition=new SpeechRec();voiceModeRecognition.continuous=true;voiceModeRecognition.interimResults=true;voiceModeRecognition.lang='en-US';
-  var finalText='';
-  voiceModeRecognition.onresult=function(event){
-    var interim='';
-    for(var i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal)finalText+=event.results[i][0].transcript+' ';
-      else interim+=event.results[i][0].transcript;
+  if(!SpeechRec){document.getElementById('voice-transcript-live').textContent='Voice input not supported. Please use From Scratch instead.';return;}
+  // Kill any leftover recognition before starting (iOS aborts if you start twice)
+  if(voiceModeRecognition){try{voiceModeRecognition.abort();}catch(e){}voiceModeRecognition=null;}
+  voiceModeActive=false;
+  // Small delay so iOS releases the mic fully before we reopen it
+  setTimeout(function(){
+    var finalText='';
+    voiceModeRecognition=new SpeechRec();
+    voiceModeRecognition.continuous=true;
+    voiceModeRecognition.interimResults=true;
+    voiceModeRecognition.lang='en-US';
+    voiceModeRecognition.onresult=function(event){
+      var interim='';
+      for(var i=event.resultIndex;i<event.results.length;i++){
+        if(event.results[i].isFinal)finalText+=event.results[i][0].transcript+' ';
+        else interim+=event.results[i][0].transcript;
+      }
+      voiceModeTranscript=finalText+(interim||'');
+      document.getElementById('voice-transcript-live').textContent=voiceModeTranscript;
+    };
+    voiceModeRecognition.onerror=function(e){
+      voiceModeActive=false;
+      if(e.error==='aborted'||e.error==='no-speech') return; // ignore harmless events
+      // Show error with a retry button
+      document.getElementById('voice-transcript-live').innerHTML=
+        '<span style="color:#c0392b">Mic issue ('+e.error+'). </span>'
+        +'<button onclick="startVoiceListening()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
+    };
+    voiceModeRecognition.onend=function(){voiceModeActive=false;};
+    try{
+      voiceModeRecognition.start();
+      voiceModeActive=true;
+    }catch(startErr){
+      document.getElementById('voice-transcript-live').innerHTML=
+        '<span style="color:#c0392b">Could not start mic. </span>'
+        +'<button onclick="startVoiceListening()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
     }
-    voiceModeTranscript=finalText+(interim||'');
-    document.getElementById('voice-transcript-live').textContent=voiceModeTranscript;
-  };
-  voiceModeRecognition.onerror=function(e){voiceModeActive=false;document.getElementById('voice-transcript-live').textContent='Could not access mic: '+e.error;};
-  voiceModeRecognition.onend=function(){voiceModeActive=false;};
-  voiceModeRecognition.start();
+  }, 300);
 }
 function stopVoiceListening(){
   voiceModeActive=false;
