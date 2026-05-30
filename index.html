@@ -1222,32 +1222,53 @@ function filterBy(type,val,btn){
   btn.classList.add('active');loadGallery();
 }
 async function loadGallery(){
-  document.getElementById('gallery-loading').style.display='block';document.getElementById('gallery-grid').style.display='none';document.getElementById('gallery-empty').style.display='none';
+  document.getElementById('gallery-loading').style.display='block';
+  document.getElementById('gallery-grid').style.display='none';
+  document.getElementById('gallery-empty').style.display='none';
   try{
     var isPiecesView=archiveViewType==='pieces';
-    // Fetch ALL outfits, then filter client-side for robustness
     var resp=await sb.from('outfits').select('*').order('created_at',{ascending:false});
     if(resp.error)throw resp.error;
     var allRows=resp.data||[];
-
-
+    document.getElementById('archive-tab').textContent='Archive \u2014 '+allRows.length;
+    var typeRows=allRows.filter(function(item){
+      var pt=(item.photo_type||'').trim().toLowerCase();
+      return isPiecesView?(pt==='individual piece'):(pt!=='individual piece');
+    });
+    var data=typeRows.filter(function(item){
+      if(isPiecesView){
+        if(filterCategory==='All')return true;
+        var parts=(item.description||'').split('|');
+        return parts.some(function(p){return p.trim().toLowerCase()===filterCategory.toLowerCase();});
+      }
+      var occ=(item.occasion||'').trim();
+      var wx=(item.weather||'').trim();
+      var occOk=filterOccasion==='All'||occ===''||occ.toLowerCase()==='all'||occ.split(',').some(function(o){return o.trim().toLowerCase()===filterOccasion.toLowerCase();});
+      var wxOk=filterWeather==='All'||wx===''||wx.toLowerCase()==='all'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
+      return occOk&&wxOk;
+    });
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
-      // Show helpful message if filter is active
-      var emptyEl=document.getElementById('gallery-empty');
       var isFiltered=(isPiecesView&&filterCategory!=='All')||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
-      emptyEl.querySelector('.empty-text').textContent=isFiltered?'No items match this filter.':'Nothing here yet.';
+      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter.':'Nothing here yet.';
       return;
     }
     document.getElementById('gallery-grid').style.display='grid';
     document.getElementById('gallery-grid').innerHTML=data.map(function(item){
-      var nameHtml='';if(isPiecesView&&item.description)nameHtml='<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:14px;font-weight:700;color:#fff;line-height:1.3">'+(item.description.split(' | ')[0]||'')+'</div>';
+      var nameHtml='';
+      if(isPiecesView&&item.description)nameHtml='<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:14px;font-weight:700;color:#fff;line-height:1.3">'+(item.description.split(' | ')[0]||'')+'</div>';
+      var safeOcc=(item.occasion||'').replace(/'/g,"\\'");
+      var safeWx=(item.weather||'').replace(/'/g,"\\'");
       var safeDesc=(item.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative"><img class="gallery-img" src="'+(item.image_data||item.image_url)+'" loading="lazy" onerror="this.style.display=\'none\'">'+nameHtml+'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+item.occasion+'\',\''+item.weather+'\',\''+safeDesc+'\')">\u270F\uFE0F</button><button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button></div></div>';
+      return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative">'
+        +'<img class="gallery-img" src="'+(item.image_data||item.image_url)+'" loading="lazy" onerror="this.style.display=\'none\'">'
+        +nameHtml
+        +'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+safeOcc+'\',\''+safeWx+'\',\''+safeDesc+'\')">\u270F\uFE0F</button>'
+        +'<button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button>'
+        +'</div></div>';
     }).join('');
   }catch(e){
-    console.error('loadGallery error:',e);
     document.getElementById('gallery-loading').style.display='none';
     document.getElementById('gallery-empty').style.display='block';
   }
