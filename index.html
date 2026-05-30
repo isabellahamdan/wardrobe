@@ -269,8 +269,14 @@ button{cursor:pointer}
         <div class="voice-listening" id="voice-listening-state">
           <div class="voice-mic-big" onclick="stopVoiceListening()">&#127897;</div>
           <div class="voice-listening-label">Listening...</div>
-          <div class="voice-listening-sub">Tell me where you're going, what you're feeling, what you want to wear</div>
-          <div class="voice-listening-transcript" id="voice-transcript-live"></div>
+          <div style="text-align:left;margin:20px 0 0;padding:18px 20px;background:#f5f5f5;border-left:3px solid #6B2D3E;">
+            <div style="font-size:11px;letter-spacing:0.3em;color:#6B2D3E;text-transform:uppercase;font-weight:700;margin-bottom:14px">You can say things like</div>
+            <div style="font-size:15px;color:#444;margin-bottom:12px;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Occasion &amp; vibe</span>&#8220;Work meeting, mild weather, I want to feel powerful but not stiff&#8221;</div>
+            <div style="font-size:15px;color:#444;margin-bottom:12px;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Lean into inspiration</span>&#8220;Really use my skirt styling tips, I want something editorial today&#8221;</div>
+            <div style="font-size:15px;color:#444;margin-bottom:12px;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Start from a feeling</span>&#8220;I want to feel like the influencers I follow &#8212; effortless, a little sexy&#8221;</div>
+            <div style="font-size:15px;color:#444;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Mix it all</span>&#8220;Night out, warm weather, show arms, lean into my animal print rules&#8221;</div>
+          </div>
+          <div class="voice-listening-transcript" id="voice-transcript-live" style="margin-top:16px"></div>
           <button class="voice-stop-btn" onclick="stopVoiceListening()">Done &#8594;</button>
         </div>
         <div id="voice-understanding-state" style="display:none">
@@ -1196,23 +1202,58 @@ async function loadGallery(){
   document.getElementById('gallery-loading').style.display='block';document.getElementById('gallery-grid').style.display='none';document.getElementById('gallery-empty').style.display='none';
   try{
     var isPiecesView=archiveViewType==='pieces';
-    var resp=await sb.from('outfits').select('*').eq('photo_type',isPiecesView?'Individual Piece':'Full Outfit').order('created_at',{ascending:false});
-    var data=resp.data?resp.data.filter(function(item){
-      if(isPiecesView){if(filterCategory!=='All'){var parts=(item.description||'').split(' | ');return(parts[1]||'')===filterCategory;}return true;}
-      var occMatch=filterOccasion==='All'||!item.occasion||item.occasion==='All'||item.occasion.split(',').indexOf(filterOccasion)>=0;
-      var wxMatch=filterWeather==='All'||!item.weather||item.weather==='All'||item.weather.split(',').indexOf(filterWeather)>=0;
-      return occMatch&&wxMatch;
-    }):null;
+    // Fetch ALL outfits, then filter client-side for robustness
+    var resp=await sb.from('outfits').select('*').order('created_at',{ascending:false});
     if(resp.error)throw resp.error;
+    var allRows=resp.data||[];
+
+    // Separate by type — match loosely (trim + case-insensitive) to handle DB inconsistencies
+    var typeRows=allRows.filter(function(item){
+      var pt=(item.photo_type||'').trim().toLowerCase();
+      return isPiecesView?(pt==='individual piece'):(pt!=='individual piece');
+    });
+
+    // Update total count in tab label (always shows full type count, not filtered)
+    document.getElementById('archive-tab').textContent='Archive \u2014 '+allRows.length;
+
+    // Apply filters
+    var data=typeRows.filter(function(item){
+      if(isPiecesView){
+        if(filterCategory==='All')return true;
+        // Check all parts of description for the category
+        var desc=(item.description||'').toLowerCase();
+        var parts=(item.description||'').split(' | ');
+        // Check part[1] (category slot) OR anywhere in description
+        return parts.some(function(p){return p.trim().toLowerCase()===filterCategory.toLowerCase();});
+      }
+      // Looks: occasion + weather filter
+      var occ=(item.occasion||'').trim();
+      var wx=(item.weather||'').trim();
+      var occMatch=filterOccasion==='All'||occ===''||occ==='All'||occ.split(',').some(function(o){return o.trim().toLowerCase()===filterOccasion.toLowerCase();});
+      var wxMatch=filterWeather==='All'||wx===''||wx==='All'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
+      return occMatch&&wxMatch;
+    });
+
     document.getElementById('gallery-loading').style.display='none';
-    if(!data||data.length===0){document.getElementById('gallery-empty').style.display='block';return;}
+    if(!data||data.length===0){
+      document.getElementById('gallery-empty').style.display='block';
+      // Show helpful message if filter is active
+      var emptyEl=document.getElementById('gallery-empty');
+      var isFiltered=(isPiecesView&&filterCategory!=='All')||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
+      emptyEl.querySelector('.empty-text').textContent=isFiltered?'No items match this filter.':'Nothing here yet.';
+      return;
+    }
     document.getElementById('gallery-grid').style.display='grid';
-    document.getElementById('archive-tab').textContent='Archive - '+data.length;
     document.getElementById('gallery-grid').innerHTML=data.map(function(item){
       var nameHtml='';if(isPiecesView&&item.description)nameHtml='<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 10px;font-size:14px;font-weight:700;color:#fff;line-height:1.3">'+(item.description.split(' | ')[0]||'')+'</div>';
-      return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative"><img class="gallery-img" src="'+(item.image_data||item.image_url)+'" loading="lazy" onerror="this.style.display=\'none\'">'+nameHtml+'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+item.occasion+'\',\''+item.weather+'\',\''+((item.description||'').replace(/'/g,"\\'"))+'\')">\u270F\uFE0F</button><button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button></div></div>';
+      var safeDesc=(item.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative"><img class="gallery-img" src="'+(item.image_data||item.image_url)+'" loading="lazy" onerror="this.style.display=\'none\'">'+nameHtml+'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+item.occasion+'\',\''+item.weather+'\',\''+safeDesc+'\')">\u270F\uFE0F</button><button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button></div></div>';
     }).join('');
-  }catch(e){document.getElementById('gallery-loading').style.display='none';document.getElementById('gallery-empty').style.display='block';}
+  }catch(e){
+    console.error('loadGallery error:',e);
+    document.getElementById('gallery-loading').style.display='none';
+    document.getElementById('gallery-empty').style.display='block';
+  }
 }
 async function deleteItem(id){
   if(!confirm('Remove this?'))return;
