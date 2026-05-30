@@ -1581,7 +1581,7 @@ async function loadGallery(){
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
       var isFiltered=(isPiecesView&&(filterCategory!=='All'||filterWeather!=='All'))||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
-      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter.':'Nothing here yet.';
+      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter. ('+typeRows.length+' total in this view)':'Nothing here yet. ('+allRows.length+' total in DB, '+typeRows.length+' of this type)';
       return;
     }
     document.getElementById('gallery-grid').style.display='grid';
@@ -1601,6 +1601,7 @@ async function loadGallery(){
   }catch(e){
     document.getElementById('gallery-loading').style.display='none';
     document.getElementById('gallery-empty').style.display='block';
+    document.getElementById('gallery-empty').querySelector('.empty-text').textContent='Error loading: '+(e.message||JSON.stringify(e));
   }
 }
 async function deleteItem(id){
