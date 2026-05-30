@@ -1268,6 +1268,13 @@ async function loadGallery(){
     });
     console.log('After filter (occ='+filterOccasion+', wx='+filterWeather+'):', data.length);
 
+    // Show on-screen debug panel so we can diagnose on iPhone without DevTools
+    var debugEl=document.getElementById('gallery-debug');
+    if(!debugEl){debugEl=document.createElement('div');debugEl.id='gallery-debug';debugEl.style.cssText='font-size:11px;font-family:monospace;background:#fffbe6;border:1px solid #e0c000;padding:12px;margin-bottom:12px;line-height:1.7;word-break:break-all;';document.getElementById('gallery-grid').parentNode.insertBefore(debugEl,document.getElementById('gallery-grid'));}
+    var ptList=Object.keys(ptCounts).map(function(k){return k+'('+ptCounts[k]+')'}).join(', ');
+    var sample=allRows.slice(0,3).map(function(r){return 'occ="'+(r.occasion||'null')+'" wx="'+(r.weather||'null')+'" type="'+(r.photo_type||'null')+'"';}).join('<br>');
+    debugEl.innerHTML='<b>Total rows: '+allRows.length+'</b><br>photo_types: '+ptList+'<br>typeRows(isPieces='+isPiecesView+'): '+typeRows.length+'<br>After filter(occ='+filterOccasion+',wx='+filterWeather+'): '+data.length+'<br><br><b>First 3 rows:</b><br>'+sample+'<br><br><button onclick="document.getElementById('gallery-debug').style.display='none'" style="font-size:11px;padding:4px 10px;cursor:pointer;">Close</button>';
+
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
