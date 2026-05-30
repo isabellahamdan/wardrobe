@@ -1529,6 +1529,7 @@ function resetBatch(){
   if(btn){btn.disabled=true;btn.textContent='Save All';}
 }
 
+function filterBy(type,val,btn){
   if(type==='occasion')filterOccasion=val;else if(type==='weather')filterWeather=val;else if(type==='category')filterCategory=val;
   document.querySelectorAll('.filter-btn').forEach(function(b){if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+type+"'")>=0)b.classList.remove('active');});
   btn.classList.add('active');loadGallery();
