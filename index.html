@@ -361,7 +361,7 @@ button{cursor:pointer}
             <div class="toggle-label-title">Archive only</div>
             <div class="toggle-label-sub">Suggest only from my photos</div>
           </div>
-          <div class="toggle" id="archive-toggle" onclick="toggleArchiveOnly()"><div class="toggle-knob" id="archive-toggle-knob"></div></div>
+          <div class="toggle" id="archive-toggle" onclick="toggleArchiveOnly()" style="background:#000"><div class="toggle-knob" id="archive-toggle-knob" style="left:24px"></div></div>
         </div>
         <div style="display:flex;gap:2px">
           <button class="btn-ghost" onclick="resetStylist()" style="width:auto;padding:18px 20px;font-size:12px">&#8592; Back</button>
@@ -719,7 +719,7 @@ button{cursor:pointer}
             <div class="toggle-label-title">Archive only</div>
             <div class="toggle-label-sub">Suggest only pieces I already own</div>
           </div>
-          <div class="toggle" id="travel-archive-toggle" onclick="toggleTravelArchiveOnly()"><div class="toggle-knob" id="travel-archive-toggle-knob"></div></div>
+          <div class="toggle" id="travel-archive-toggle" onclick="toggleTravelArchiveOnly()" style="background:#000"><div class="toggle-knob" id="travel-archive-toggle-knob" style="left:24px"></div></div>
         </div>
         <div id="travel-weather-status" style="display:none;font-size:15px;color:#555;font-style:italic;margin-bottom:16px;padding:12px 16px;background:#f5f5f5;border-left:3px solid #000;"></div>
         <button class="btn-primary" id="travel-plan-btn" onclick="planTravel()" disabled>Plan My Wardrobe</button>
@@ -797,7 +797,7 @@ var ACCESSORY_CATS=['Accessory','Bag','Jewellery'];
 var uploadArchiveType='looks';
 var queue=[],currentOptions=[],currentOptionIdx=0,chatHistory=[];
 var filterOccasion='All',filterWeather='All',filterCategory='All';
-var archiveOnlyState=false,travelArchiveOnly=false,archiveViewType='looks';
+var archiveOnlyState=true,travelArchiveOnly=true,archiveViewType='looks';
 var selectedPieceId=null,selectedPieceData=null;
 var inspoType=null,inspoQueue=[];
 var voiceRecognition=null,voiceRecognitionActive=false;
@@ -832,15 +832,15 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
   if(btn)btn.classList.add('recording');
   if(statusEl)statusEl.textContent='Listening... tap mic again to stop.';
   voiceRecognition=new SpeechRec();voiceRecognition.continuous=true;voiceRecognition.interimResults=true;voiceRecognition.lang='en-US';
-  var finalTranscript='';var interimFallback='';
+  var finalTranscript='';
   voiceRecognition.onresult=function(event){
-    finalTranscript='';interimFallback='';
-    for(var i=0;i<event.results.length;i++){
+    var interim='';
+    for(var i=event.resultIndex;i<event.results.length;i++){
       if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
-      else interimFallback+=event.results[i][0].transcript;
+      else interim+=event.results[i][0].transcript;
     }
-    var ta=document.getElementById(textareaId);if(ta)ta.value=(finalTranscript||interimFallback).trim();
-    if(statusEl)statusEl.textContent='Listening... '+((finalTranscript||interimFallback).length)+' chars';
+    var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
+    if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
   };
   voiceRecognition.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
   voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
@@ -1247,7 +1247,7 @@ async function sendChat(){
 }
 
 function resetStylist(){
-  selectedOccasion=null;selectedWeatherStyle=null;currentOptions=[];chatHistory=[];selectedPieceId=null;selectedPieceData=null;archiveOnlyState=false;voiceModeTranscript='';voiceInterpretation=null;
+  selectedOccasion=null;selectedWeatherStyle=null;currentOptions=[];chatHistory=[];selectedPieceId=null;selectedPieceData=null;archiveOnlyState=true;voiceModeTranscript='';voiceInterpretation=null;
   if(voiceModeRecognition){try{voiceModeRecognition.stop();}catch(e){}voiceModeRecognition=null;}voiceModeActive=false;
   document.querySelectorAll('.occasion-btn,.weather-btn').forEach(function(b){b.classList.remove('active');});
   document.querySelectorAll('.mode-btn,.mode-btn-voice').forEach(function(b){b.classList.remove('active');});
@@ -1256,7 +1256,7 @@ function resetStylist(){
   ['stylist-scratch','stylist-piece','stylist-voice','stylist-result'].forEach(function(id){document.getElementById(id).style.display='none';});
   var btn=document.getElementById('compose-btn');if(btn){btn.disabled=true;btn.textContent='Style Me';}
   var btn2=document.getElementById('compose-piece-btn');if(btn2){btn2.disabled=true;btn2.textContent='Style Me';}
-  var toggle=document.getElementById('archive-toggle');if(toggle){toggle.style.background='#e0e0e0';document.getElementById('archive-toggle-knob').style.left='2px';}
+  var toggle=document.getElementById('archive-toggle');if(toggle){toggle.style.background='#000';document.getElementById('archive-toggle-knob').style.left='24px';}
 }
 
 // ── VARIETY ───────────────────────────────────────────────
@@ -1928,20 +1928,20 @@ function startTravelVoice(){
   if(statusEl)statusEl.textContent='Listening... speak your trip, then tap to stop.';
   travelVoiceRec=new SpeechRec();
   travelVoiceRec.continuous=true;travelVoiceRec.interimResults=true;travelVoiceRec.lang='en-US';
-  var finalTranscript='';var interimTranscript='';
+  var finalTranscript='';
   travelVoiceRec.onresult=function(e){
-    finalTranscript='';interimTranscript='';
-    for(var i=0;i<e.results.length;i++){
+    var interim='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal)finalTranscript+=e.results[i][0].transcript+' ';
-      else interimTranscript+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
     }
-    if(statusEl)statusEl.textContent='Heard: '+(finalTranscript+interimTranscript).trim();
+    if(statusEl)statusEl.textContent='Heard: '+(finalTranscript+interim).trim();
   };
   travelVoiceRec.onerror=function(e){if(e.error==='no-speech')return;if(statusEl)statusEl.textContent='Mic error: '+e.error;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}travelVoiceRec=null;};
   travelVoiceRec.onend=function(){
     if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
     travelVoiceRec=null;
-    var best=(finalTranscript||interimTranscript).trim();
+    var best=finalTranscript.trim();
     if(!best){if(statusEl)statusEl.textContent='Nothing heard. Tap mic, speak, then tap again to stop.';return;}
     if(statusEl)statusEl.textContent='Parsing your trip...';
     parseTravelVoice(best);
@@ -2190,13 +2190,13 @@ async function saveTravelFeedback(){
   setTimeout(function(){var s=document.getElementById('travel-fb-status');if(s)s.textContent='';},4000);
 }
 function resetTravel(){
-  travelType=null;travelLuggage=null;travelArchiveOnly=false;
+  travelType=null;travelLuggage=null;travelArchiveOnly=true;
   document.getElementById('travel-destination').value='';document.getElementById('travel-date-from').value='';document.getElementById('travel-date-to').value='';document.getElementById('travel-extra').value='';
   document.getElementById('travel-weather-status').style.display='none';
   document.querySelectorAll('[id^="ttype-"],[id^="tlug-"]').forEach(function(b){b.style.background='';b.style.borderColor='';b.style.color='';});
   document.getElementById('travel-plan-btn').disabled=true;document.getElementById('travel-error').style.display='none';
   document.getElementById('travel-planner').style.display='block';document.getElementById('travel-result').style.display='none';document.getElementById('travel-result-content').innerHTML='';
-  var tt=document.getElementById('travel-archive-toggle');if(tt){tt.style.background='#e0e0e0';document.getElementById('travel-archive-toggle-knob').style.left='2px';}
+  var tt=document.getElementById('travel-archive-toggle');if(tt){tt.style.background='#000';document.getElementById('travel-archive-toggle-knob').style.left='24px';}
 }
 </script>
 
