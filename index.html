@@ -1992,16 +1992,6 @@ async function planTravel(){
   // Fetch metadata only first (no image_data) to avoid timeout with large archives
   var outfitsResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(300);
   var outfits=outfitsResp.data||[];var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
-  // Batch-load image_data for pieces only (needed for display)
-  var pieceIds=pieces.map(function(p){return p.id;});
-  var imageMap={};
-  for(var bi=0;bi<pieceIds.length;bi+=20){
-    var batch=pieceIds.slice(bi,bi+20);
-    var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',batch);
-    if(ir.data){ir.data.forEach(function(row){imageMap[row.id]=row.image_data||row.image_url||null;});}
-  }
-  // Merge image data back into pieces
-  pieces.forEach(function(p){if(imageMap[p.id])p.image_data=imageMap[p.id];});
   window._lastOutfits=outfits;
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
   var textTips=(inspoResp.data||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
@@ -2088,8 +2078,10 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
         var safeImgSrc=imgSrc?imgSrc.replace(/'/g,'&#39;'):'';
         var safePieceName=piece.name.replace(/'/g,'&#39;');
         var pieceKey='tv-'+dayIdx+'-'+slot.key;
+        var hasArchiveId=piece.wardrobeId?true:false;
         html+='<div class="travel-piece-row" id="'+pieceKey+'">';
-        if(imgSrc)html+='<img src="'+safeImgSrc+'" class="travel-piece-thumb" style="cursor:zoom-in" onclick="openLightbox(\''+safeImgSrc+'\',\''+safePieceName+'\')">';
+        if(hasArchiveId)html+='<img src="'+(imgSrc?safeImgSrc:'')+'" data-wid="'+piece.wardrobeId+'" class="travel-piece-thumb" style="cursor:zoom-in;background:#f0f0f0" onclick="openLightbox(this.src,\''+safePieceName+'\')">';
+        else if(imgSrc)html+='<img src="'+safeImgSrc+'" class="travel-piece-thumb" style="cursor:zoom-in" onclick="openLightbox(\''+safeImgSrc+'\',\''+safePieceName+'\')">';
         else html+='<div class="travel-piece-thumb-empty"><span style="font-size:10px;color:#aaa;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">'+slot.label.slice(0,3).toUpperCase()+'</span></div>';
         html+='<div style="flex:1"><div class="travel-slot-label">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">&#10003;</span>':'')+'</div><div class="travel-slot-name">'+piece.name+'</div></div>';
         html+='<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
@@ -2117,6 +2109,29 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
   document.getElementById('travel-plan-btn').disabled=false;document.getElementById('travel-plan-btn').textContent='Plan My Wardrobe';
   var fbTa=document.getElementById('travel-feedback-text');if(fbTa)fbTa.value='';
   var fbSt=document.getElementById('travel-fb-status');if(fbSt)fbSt.textContent='';
+  // Lazy-load images for only the wardrobe pieces shown in the result
+  var usedIds=[];
+  if(result.outfits){result.outfits.forEach(function(day){var o=day.outfit||{};['top','bottom','shoes','outerwear','accessories'].forEach(function(k){var p=o[k];if(p&&p.wardrobeId)usedIds.push(p.wardrobeId);});});}
+  if(usedIds.length){
+    setTimeout(function(){
+      for(var li=0;li<usedIds.length;li+=20){
+        (function(batchIds){
+          sb.from('outfits').select('id,image_data,image_url').in('id',batchIds).then(function(ir){
+            if(ir.data){ir.data.forEach(function(row){
+              var src=row.image_data||row.image_url||'';if(!src)return;
+              var allOutfitsRef=window._lastOutfits||[];
+              var item=allOutfitsRef.find(function(x){return x.id===row.id;});
+              if(item)item.image_data=src;
+              // Update all img elements in travel result that match this id
+              document.querySelectorAll('.travel-piece-thumb').forEach(function(img){
+                if(img.getAttribute('data-wid')===String(row.id))img.src=src;
+              });
+            });}
+          });
+        })(usedIds.slice(li,li+20));
+      }
+    },100);
+  }
 }
 async function travelPieceFeedback(pieceKey,type,pieceName,btn){
   var row=document.getElementById(pieceKey);
