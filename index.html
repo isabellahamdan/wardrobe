@@ -246,18 +246,18 @@ button{cursor:pointer}
     <div class="pin-dot" id="dot-2"></div><div class="pin-dot" id="dot-3"></div>
   </div>
   <div class="pin-grid">
-    <button class="pin-btn" onclick="enterPin('1')">1</button>
-    <button class="pin-btn" onclick="enterPin('2')">2</button>
-    <button class="pin-btn" onclick="enterPin('3')">3</button>
-    <button class="pin-btn" onclick="enterPin('4')">4</button>
-    <button class="pin-btn" onclick="enterPin('5')">5</button>
-    <button class="pin-btn" onclick="enterPin('6')">6</button>
-    <button class="pin-btn" onclick="enterPin('7')">7</button>
-    <button class="pin-btn" onclick="enterPin('8')">8</button>
-    <button class="pin-btn" onclick="enterPin('9')">9</button>
-    <button class="pin-btn" onclick="clearPin()" style="font-size:16px">&#9003;</button>
-    <button class="pin-btn" onclick="enterPin('0')">0</button>
-    <button class="pin-btn" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('1')" onclick="enterPin('1')">1</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('2')" onclick="enterPin('2')">2</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('3')" onclick="enterPin('3')">3</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('4')" onclick="enterPin('4')">4</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('5')" onclick="enterPin('5')">5</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('6')" onclick="enterPin('6')">6</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('7')" onclick="enterPin('7')">7</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('8')" onclick="enterPin('8')">8</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('9')" onclick="enterPin('9')">9</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();clearPin()" onclick="clearPin()" style="font-size:16px">&#9003;</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();enterPin('0')" onclick="enterPin('0')">0</button>
+    <button class="pin-btn" ontouchstart="event.preventDefault();submitPin()" onclick="submitPin()" style="background:#6B2D3E;border-color:#6B2D3E;font-size:16px">OK</button>
   </div>
   <div class="pin-error" id="pin-error">Incorrect PIN. Try again.</div>
 </div>
@@ -815,6 +815,7 @@ function getSpeechRecognition(){return window.SpeechRecognition||window.webkitSp
 function toggleMicForTextarea(textareaId,btnId,statusId){
   if(voiceRecognitionActive&&activeMicBtnId===btnId){stopMicForTextarea();return;}
   if(voiceRecognitionActive)stopMicForTextarea();
+  if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}voiceRecognition=null;}
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
   activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
@@ -832,9 +833,9 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
     var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
     if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
   };
-  voiceRecognition.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
+  voiceRecognition.onerror=function(e){if(e.error==='aborted'||e.error==='no-speech')return;if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
   voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
-  voiceRecognition.start();
+  setTimeout(function(){try{if(voiceRecognition)voiceRecognition.start();}catch(ex){}},300);
 }
 function stopMicForTextarea(){
   voiceRecognitionActive=false;
