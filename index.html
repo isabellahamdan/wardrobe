@@ -301,8 +301,8 @@ button{cursor:pointer}
 
       <div id="stylist-voice" style="display:none">
         <div class="voice-listening" id="voice-listening-state">
-          <div class="voice-mic-big" onclick="stopVoiceListening()">&#127897;</div>
-          <div class="voice-listening-label">Listening...</div>
+          <div class="voice-mic-big" id="voice-mic-big-btn" onclick="handleVoiceMicTap()">&#127897;</div>
+          <div class="voice-listening-label" id="voice-listening-label">Tap to speak</div>
           <div style="text-align:left;margin:20px 0 0;padding:18px 20px;background:#f5f5f5;border-left:3px solid #6B2D3E;">
             <div style="font-size:11px;letter-spacing:0.3em;color:#6B2D3E;text-transform:uppercase;font-weight:700;margin-bottom:14px">You can say things like</div>
             <div style="font-size:15px;color:#444;margin-bottom:12px;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Occasion &amp; vibe</span>&#8220;Work meeting, mild weather, I want to feel powerful but not stiff&#8221;</div>
@@ -311,7 +311,7 @@ button{cursor:pointer}
             <div style="font-size:15px;color:#444;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Mix it all</span>&#8220;Night out, warm weather, show arms, lean into my animal print rules&#8221;</div>
           </div>
           <div class="voice-listening-transcript" id="voice-transcript-live" style="margin-top:16px"></div>
-          <button class="voice-stop-btn" onclick="stopVoiceListening()">Done &#8594;</button>
+          <button class="voice-stop-btn" id="voice-done-btn" onclick="stopVoiceListening()" style="display:none">Done &#8594;</button>
         </div>
         <div id="voice-understanding-state" style="display:none">
           <div class="voice-understanding">
@@ -935,7 +935,20 @@ function selectStyleMode(mode,btn){
   document.getElementById('stylist-voice').style.display='none';
   if(mode==='scratch'){document.getElementById('stylist-scratch').style.display='block';}
   else if(mode==='piece'){document.getElementById('stylist-piece').style.display='block';loadPiecePicker();}
-  else if(mode==='voice'){document.getElementById('stylist-voice').style.display='block';startVoiceListening();}
+  else if(mode==='voice'){document.getElementById('stylist-voice').style.display='block';}
+}
+function handleVoiceMicTap(){
+  var btn=document.getElementById('voice-mic-big-btn');
+  var label=document.getElementById('voice-listening-label');
+  var doneBtn=document.getElementById('voice-done-btn');
+  if(voiceModeActive){
+    stopVoiceListening();
+  } else {
+    if(btn)btn.style.animation='micPulse 1.2s infinite';
+    if(label)label.textContent='Listening...';
+    if(doneBtn)doneBtn.style.display='block';
+    startVoiceListening();
+  }
 }
 function startVoiceListening(){
   document.getElementById('voice-listening-state').style.display='block';
@@ -965,13 +978,20 @@ function startVoiceListening(){
     };
     voiceModeRecognition.onerror=function(e){
       voiceModeActive=false;
-      if(e.error==='aborted'||e.error==='no-speech') return; // ignore harmless events
-      // Show error with a retry button
+      var btn=document.getElementById('voice-mic-big-btn');
+      var label=document.getElementById('voice-listening-label');
+      if(btn)btn.style.animation='';
+      if(e.error==='aborted'||e.error==='no-speech') return;
+      if(label)label.textContent='';
       document.getElementById('voice-transcript-live').innerHTML=
         '<span style="color:#c0392b">Mic issue ('+e.error+'). </span>'
-        +'<button onclick="startVoiceListening()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
+        +'<button onclick="handleVoiceMicTap()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
     };
-    voiceModeRecognition.onend=function(){voiceModeActive=false;};
+    voiceModeRecognition.onend=function(){
+      voiceModeActive=false;
+      var btn=document.getElementById('voice-mic-big-btn');
+      if(btn)btn.style.animation='';
+    };
     try{
       voiceModeRecognition.start();
       voiceModeActive=true;
@@ -993,7 +1013,11 @@ function redoVoice(){
   document.getElementById('voice-understanding-state').style.display='none';
   document.getElementById('voice-listening-state').style.display='block';
   document.getElementById('voice-transcript-live').textContent='';
-  voiceModeTranscript='';voiceInterpretation=null;startVoiceListening();
+  var label=document.getElementById('voice-listening-label');
+  var doneBtn=document.getElementById('voice-done-btn');
+  if(label)label.textContent='Tap to speak';
+  if(doneBtn)doneBtn.style.display='none';
+  voiceModeTranscript='';voiceInterpretation=null;
 }
 async function interpretVoiceRequest(transcript){
   document.getElementById('voice-listening-state').style.display='none';
@@ -1158,11 +1182,16 @@ async function _doCompose(extra,anchorPiece){
   var liked=fbData.filter(function(f){return f.feedback==='like';});
   var noted=fbData.filter(function(f){return f.feedback==='dislike'||f.feedback==='note';});
   var fbContext=fbData.length>0?'\n\nFEEDBACK & NOTES (learn from ALL of these):\nLIKED: '+liked.slice(0,12).map(function(f){return f.piece_name+(f.occasion?' for '+f.occasion:'');}).join(', ')+'\nNOTES/DISLIKES: '+noted.slice(0,15).map(function(f){return (f.reason||f.piece_name)+(f.weather?' ('+f.weather+')':'');}).join(' | '):'';
-  var piecesList=pieces.map(function(o){return '[WARDROBE_ID:'+o.id+'] PIECE | '+o.occasion+'/'+(o.weather||'?')+' | '+(o.description||'item');}).join('\n');
+  var piecesList=pieces.map(function(o){
+    var parts=(o.description||'').split(' | ');
+    var name=parts[0]||'item';
+    var cat=parts[1]||'';
+    return '[WARDROBE_ID:'+o.id+'] '+( cat?'['+cat.toUpperCase()+']':'')+' | '+o.occasion+'/'+(o.weather||'?')+' | '+name;
+  }).join('\n');
   var looksList=looks.map(function(o){var parsed=null;try{parsed=JSON.parse(o.description);}catch(e){}if(parsed&&parsed.pieces){var vp=parsed.pieces.filter(function(p){return p.description&&p.description.length>3&&p.description!=='only if visible';});return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+'\n'+vp.map(function(p){return '  -> '+p.category+' [WARDROBE_ID:'+o.id+']: '+p.description;}).join('\n');}return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(o.description||'outfit');}).join('\n');
   var anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') - build the entire outfit around this.':'';
   var archiveInstruction=archiveOnlyState?'ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.':'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
-  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES: 1) Tips are law. 2) Mine full looks for pieces. 3) Mix sources. 4) Two very different looks. 5) Omit empty slots. 6) Archive first.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional","wardrobeId":"ID or null"}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
+  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit empty slots.\n5) Archive first.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom". A dress replaces both top and bottom. Do NOT pair a dress with a separate top.\n7) Feel free to suggest a dress as a standalone look — dress + shoes + accessories only.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional","wardrobeId":"ID or null"}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
@@ -2038,7 +2067,12 @@ async function planTravel(){
     if(isCold&&(wx.indexOf('warm')>=0)&&wx.indexOf('cold')<0&&wx.indexOf('mild')<0)return false;
     return true;
   });
-  var piecesList=relevantPieces.map(function(o){return '[ID:'+o.id+'] '+(o.description||'');}).join('\n');
+  var piecesList=relevantPieces.map(function(o){
+    var parts=(o.description||'').split(' | ');
+    var name=parts[0]||'item';
+    var cat=parts[1]||'';
+    return '[ID:'+o.id+'] '+(cat?'['+cat.toUpperCase()+'] ':'')+name;
+  }).join('\n');
   var looksList=looks.map(function(o){var desc=o.description||'';try{var p=JSON.parse(desc);desc=p.description||desc;}catch(e){}return '[ID:'+o.id+'] '+o.occasion+' look: '+desc.slice(0,80);}).join('\n');
   var weatherContext=weather?'WEATHER: '+weather.weatherProfile+' ('+weather.minTemp+'\u00B0\u2013'+weather.maxTemp+'\u00B0C, '+weather.rainyDays+' rainy days)':'No forecast available - plan for typical weather.';
   // Per-category counts for threshold logic
@@ -2062,7 +2096,7 @@ async function planTravel(){
   } else {
     travelArchiveInstruction='Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
   }
-  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip).\n- Choose pieces appropriate for the actual weather temperature.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
+  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip).\n- [DRESS] pieces are complete outfits — if used, set it in the "top" slot with category Dress and leave bottom empty. NEVER put a dress in the bottom slot.\n- A dress day = dress + shoes + accessories only, no separate top.\n- Choose pieces appropriate for the actual weather temperature.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
