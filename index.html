@@ -419,7 +419,9 @@ button{cursor:pointer}
         <div class="option-nav">
           <button class="option-pill active" id="opt1-btn" onclick="showOption(0)">Look 1</button>
           <button class="option-pill" id="opt2-btn" onclick="showOption(1)">Look 2</button>
+          <button onclick="markLookWorn()" id="wore-this-btn" style="padding:10px 16px;background:transparent;border:1px solid #4a7a5a;color:#4a7a5a;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">&#10003; Wore this</button>
         </div>
+        <div id="wore-this-status" style="font-size:13px;color:#4a7a5a;font-style:italic;margin-bottom:8px;min-height:16px"></div>
         <div id="option-0"></div>
         <div id="option-1" style="display:none"></div>
         <div class="voice-feedback-box" style="margin-top:24px">
@@ -441,8 +443,6 @@ button{cursor:pointer}
           </div>
         </div>
         <button class="btn-ghost" onclick="resetStylist()" style="margin-top:12px">New Look</button>
-        <button onclick="markLookWorn()" id="wore-this-btn" style="width:100%;margin-top:8px;padding:16px;background:transparent;border:1px solid #4a7a5a;color:#4a7a5a;font-size:13px;letter-spacing:0.35em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">&#10003; I wore this look</button>
-        <div id="wore-this-status" style="font-size:14px;color:#4a7a5a;font-style:italic;text-align:center;margin-top:6px;min-height:18px"></div>
       </div>
     </div>
 
@@ -1246,15 +1246,34 @@ function renderOption(idx){
     var isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     var safeId=idx+'-'+pi;var safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
     var photoHtml=imgSrc?(isFullLookRef?'<div class="piece-photo" style="position:relative;overflow:hidden;"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.72);padding:3px 4px;font-size:8px;letter-spacing:0.08em;color:#fff;text-transform:uppercase;font-weight:700;text-align:center;">'+p.category+' from look</div></div>':'<div class="piece-photo"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>'):'<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>';
-    return '<div class="piece-card" id="card-'+safeId+'">'+photoHtml+'<div class="piece-content"><div class="piece-category">'+p.category+(matched?'<span style="font-size:9px;letter-spacing:0.12em;color:#4a7a5a;margin-left:6px;font-weight:700">&#10003; yours</span>':'')+'</div><div class="piece-name">'+p.name+'</div>'+(p.note?'<div class="piece-note">'+p.note+'</div>':'')+'<div class="piece-feedback"><button class="fb-btn" id="fb-'+safeId+'-like" onclick="saveFeedback(\''+safeId+'\',\'like\',\''+safeName+'\')">&#128077;</button><button class="fb-btn" id="fb-'+safeId+'-dislike" onclick="showDislikeReason(\''+safeId+'\',\''+safeName+'\')">&#128078;</button></div><div id="reason-box-'+safeId+'" style="display:none;margin-top:10px"><input type="text" id="reason-input-'+safeId+'" placeholder="Why not?" style="width:100%;border:none;border-bottom:1px solid #000;padding:8px 0;font-size:15px;font-family:inherit;color:#000;background:transparent;"><div style="display:flex;gap:8px;margin-top:8px"><button onclick="saveDislikeWithReason(\''+safeId+'\',\''+safeName+'\')" style="flex:1;padding:10px;background:#000;color:#fff;border:none;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-family:inherit;cursor:pointer;">Save</button><button onclick="hideDislikeReason(\''+safeId+'\')" style="padding:10px 16px;background:transparent;border:1px solid #e0e0e0;font-size:12px;font-family:inherit;cursor:pointer;">Cancel</button></div></div></div></div>';
+    return '<div class="piece-card" id="card-'+safeId+'">'+photoHtml+'<div class="piece-content"><div class="piece-category">'+p.category+(matched?'<span style="font-size:9px;letter-spacing:0.12em;color:#4a7a5a;margin-left:6px;font-weight:700">&#10003; yours</span>':'')+'</div><div class="piece-name">'+p.name+'</div>'+(p.note?'<div class="piece-note">'+p.note+'</div>':'')+'<div class="piece-feedback"><button class="fb-btn" id="fb-'+safeId+'" onclick="showPieceFeedback(\''+safeId+'\',\''+safeName+'\')" style="font-size:11px;letter-spacing:0.2em;padding:6px 12px;">Feedback</button></div><div id="reason-box-'+safeId+'" style="display:none;margin-top:10px"><input type="text" id="reason-input-'+safeId+'" placeholder="Note on this piece in context of the look..." style="width:100%;border:none;border-bottom:1px solid #000;padding:8px 0;font-size:15px;font-family:inherit;color:#000;background:transparent;"><div style="display:flex;gap:8px;margin-top:8px"><button onclick="savePieceFeedback(\''+safeId+'\',\''+safeName+'\')" style="flex:1;padding:10px;background:#000;color:#fff;border:none;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-family:inherit;cursor:pointer;">Save</button><button onclick="hidePieceFeedback(\''+safeId+'\')" style="padding:10px 16px;background:transparent;border:1px solid #e0e0e0;font-size:12px;font-family:inherit;cursor:pointer;">Cancel</button></div></div></div></div>';
   }).join('')||'';
   el.innerHTML=heroHtml+piecesHtml+'<div class="stylist-box"><div style="font-size:16px;color:#444;font-style:italic">'+(opt.stylistNote||'')+'</div><div class="notes-grid"><div><div class="notes-key">Lip</div><div class="notes-val">'+(opt.lip||'')+'</div></div><div><div class="notes-key">Edge</div><div class="notes-val">'+(opt.edge||'')+'</div></div></div></div>';
 }
 
-function showDislikeReason(safeId,pieceName){document.getElementById('reason-box-'+safeId).style.display='block';document.getElementById('fb-'+safeId+'-dislike').classList.add('disliked');setTimeout(function(){document.getElementById('reason-input-'+safeId).focus();},100);}
-function hideDislikeReason(safeId){document.getElementById('reason-box-'+safeId).style.display='none';document.getElementById('fb-'+safeId+'-dislike').classList.remove('disliked');}
-async function saveDislikeWithReason(safeId,pieceName){var reason=document.getElementById('reason-input-'+safeId).value.trim();document.getElementById('reason-box-'+safeId).style.display='none';document.getElementById('fb-'+safeId+'-dislike').classList.add('disliked');await sb.from('style_feedback').insert({piece_name:pieceName,feedback:'dislike',reason:reason||null,occasion:selectedOccasion,weather:selectedWeatherStyle});}
-async function saveFeedback(safeId,feedback,pieceName){document.getElementById('fb-'+safeId+'-like').classList.toggle('liked',feedback==='like');document.getElementById('fb-'+safeId+'-dislike').classList.toggle('disliked',feedback==='dislike');await sb.from('style_feedback').insert({piece_name:pieceName,feedback:feedback,occasion:selectedOccasion,weather:selectedWeatherStyle});}
+function showPieceFeedback(safeId,pieceName){
+  var box=document.getElementById('reason-box-'+safeId);
+  if(!box)return;
+  box.style.display=box.style.display==='none'?'block':'none';
+  if(box.style.display==='block'){setTimeout(function(){var inp=document.getElementById('reason-input-'+safeId);if(inp)inp.focus();},100);}
+}
+function hidePieceFeedback(safeId){var box=document.getElementById('reason-box-'+safeId);if(box)box.style.display='none';}
+async function savePieceFeedback(safeId,pieceName){
+  var reason=document.getElementById('reason-input-'+safeId).value.trim();
+  if(!reason)return;
+  // Build full outfit context
+  var opt=currentOptions[currentOptionIdx];
+  var outfitContext='';
+  if(opt&&opt.pieces){
+    var parts=opt.pieces.filter(function(p){return p.name&&p.name.trim();}).map(function(p){return p.category+': '+p.name;});
+    outfitContext='Full look ('+selectedOccasion+', '+selectedWeatherStyle+'): '+parts.join(' | ')+'. Note on '+pieceName+': '+reason;
+  } else {
+    outfitContext=reason;
+  }
+  var btn=document.getElementById('fb-'+safeId);if(btn){btn.textContent='Saved';btn.style.color='#4a7a5a';}
+  document.getElementById('reason-box-'+safeId).style.display='none';
+  await sb.from('style_feedback').insert({piece_name:pieceName,feedback:'note',reason:outfitContext,occasion:selectedOccasion,weather:selectedWeatherStyle});
+}
 
 async function saveStyleFeedbackNote(){
   var text=document.getElementById('stylist-feedback-text').value.trim();if(!text)return;
@@ -2117,6 +2136,8 @@ async function planTravel(){
       try{result=JSON.parse(fixed);}catch(e2){throw new Error('Response was cut off (too long). Try fewer days or turn off Archive Only.');}
     }
     window._travelFeedbackContext={destination:destination,weather:weather,tripDays:tripDays,travelType:travelType,travelLuggage:travelLuggage};
+    window._lastTravelResult=result;
+    window._lastTravelPieces=relevantPieces;
     renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather);
   }catch(e){var errEl=document.getElementById('travel-error');errEl.textContent='Error: '+(e.message||JSON.stringify(e));errEl.style.display='block';btn.disabled=false;btn.textContent='Plan My Wardrobe';}
 }
@@ -2131,9 +2152,17 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
   if(result.outfits&&result.outfits.length){
     html+='<div class="section-label" style="margin-bottom:18px">Day by Day</div>';
     var dayIdx=0;
+    window._travelOutfitContext={};
     result.outfits.forEach(function(day){
-      html+='<div class="travel-day-card"><div class="travel-day-label">'+day.day+'</div><div class="travel-day-occasion">'+day.occasion+'</div>';
+      html+='<div class="travel-day-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><div><div class="travel-day-label">'+day.day+'</div><div class="travel-day-occasion">'+day.occasion+'</div></div><div style="display:flex;gap:6px;flex-shrink:0;padding-top:4px"><button id="worn-'+dayIdx+'" onclick="markTravelDayWorn('+dayIdx+',\''+day.day.replace(/'/g,'')+'\')" style="padding:7px 12px;border:1px solid #4a7a5a;background:#fff;color:#4a7a5a;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">&#10003; Wore it</button><button onclick="regenerateTravelDay('+dayIdx+')" style="padding:7px 12px;border:1px solid #e0e0e0;background:#fff;color:#888;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">&#8635; Redo</button></div></div>';
       var o=day.outfit||{};
+      // Build full outfit summary for this day
+      var outfitSummary=day.day+' ('+day.occasion+'): ';
+      var slotSummaries=[];
+      [{key:'top',label:'Top'},{key:'bottom',label:'Bottom'},{key:'shoes',label:'Shoes'},{key:'outerwear',label:'Outerwear'},{key:'accessories',label:'Accessories'}].forEach(function(slot){
+        var p=o[slot.key];if(p&&p.name&&p.name!=='none'&&p.name.trim())slotSummaries.push(slot.label+': '+p.name);
+      });
+      outfitSummary+=slotSummaries.join(' | ');
       [{key:'top',label:'Top'},{key:'bottom',label:'Bottom'},{key:'shoes',label:'Shoes'},{key:'outerwear',label:'Outerwear'},{key:'accessories',label:'Accessories'}].forEach(function(slot){
         var piece=o[slot.key];if(!piece||!piece.name||piece.name==='none'||piece.name==='N/A'||piece.name==='n/a'||!piece.name.trim())return;
         var matched=piece.wardrobeId?allOutfits.find(function(x){return x.id===piece.wardrobeId;}):null;var imgSrc=matched?(matched.image_data||matched.image_url):null;
@@ -2141,17 +2170,19 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
         var safePieceName=piece.name.replace(/'/g,'&#39;');
         var pieceKey='tv-'+dayIdx+'-'+slot.key;
         var hasArchiveId=piece.wardrobeId?true:false;
+        // Store context for this piece
+        window._travelOutfitContext[pieceKey]={outfit:outfitSummary,slot:slot.label,piece:piece.name};
         html+='<div class="travel-piece-row" id="'+pieceKey+'">';
         if(hasArchiveId)html+='<img src="'+(imgSrc?safeImgSrc:'')+'" data-wid="'+piece.wardrobeId+'" class="travel-piece-thumb" style="cursor:zoom-in;background:#f0f0f0" onclick="openLightbox(this.src,\''+safePieceName+'\')">';
         else if(imgSrc)html+='<img src="'+safeImgSrc+'" class="travel-piece-thumb" style="cursor:zoom-in" onclick="openLightbox(\''+safeImgSrc+'\',\''+safePieceName+'\')">';
         else html+='<div class="travel-piece-thumb-empty"><span style="font-size:10px;color:#aaa;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">'+slot.label.slice(0,3).toUpperCase()+'</span></div>';
         html+='<div style="flex:1"><div class="travel-slot-label">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">&#10003;</span>':'')+'</div><div class="travel-slot-name">'+piece.name+'</div></div>';
-        html+='<button onclick="showTravelDislike(\''+pieceKey+'\',\''+safePieceName+'\')" style="width:32px;height:32px;border:1px solid #e0e0e0;background:#fff;font-size:15px;cursor:pointer;border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center">&#128078;</button>';
+        html+='<button onclick="showTravelDislike(\''+pieceKey+'\',\''+safePieceName+'\')" style="padding:6px 12px;border:1px solid #e0e0e0;background:#fff;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;flex-shrink:0;color:#000">Feedback</button>';
         html+='</div>';
         html+='<div id="dislike-'+pieceKey+'" style="display:none;margin:4px 0 8px 78px">';
         html+='<div style="display:flex;gap:6px;align-items:center">';
-        html+='<input type="text" placeholder="Why not? e.g. too warm for Valencia..." style="flex:1;border:none;border-bottom:1px solid #c0392b;padding:8px 0;font-size:15px;font-family:\'Cormorant Garamond\',Georgia,serif;color:#000;background:transparent;outline:none" id="reason-'+pieceKey+'">';
-        html+='<button onclick="saveTravelDislike(\''+pieceKey+'\',\''+safePieceName+'\')" style="padding:8px 14px;background:#c0392b;border:none;color:#fff;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">Save</button>';
+        html+='<input type="text" placeholder="Your note on this piece in this outfit..." style="flex:1;border:none;border-bottom:1px solid #000;padding:8px 0;font-size:15px;font-family:\'Cormorant Garamond\',Georgia,serif;color:#000;background:transparent;outline:none" id="reason-'+pieceKey+'">';
+        html+='<button onclick="saveTravelDislike(\''+pieceKey+'\',\''+safePieceName+'\')" style="padding:8px 14px;background:#000;border:none;color:#fff;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">Save</button>';
         html+='</div></div>';
       });
       dayIdx++;
@@ -2207,11 +2238,54 @@ async function saveTravelDislike(pieceKey,pieceName){
   var inp=document.getElementById('reason-'+pieceKey);
   var reason=inp?inp.value.trim():'';
   var ctx=window._travelFeedbackContext||{};
-  await sb.from('style_feedback').insert({piece_name:pieceName,feedback:'dislike',reason:reason||'Disliked in travel plan',occasion:'Travel',weather:(ctx.weather&&ctx.weather.weatherProfile)||''});
+  var outfitCtx=window._travelOutfitContext&&window._travelOutfitContext[pieceKey];
+  var fullReason='';
+  if(outfitCtx)fullReason='Full outfit: '+outfitCtx.outfit+'. Issue with '+outfitCtx.slot+' ('+pieceName+'): '+(reason||'disliked');
+  else fullReason=(reason||'Disliked in travel plan')+' [piece: '+pieceName+']';
+  await sb.from('style_feedback').insert({piece_name:pieceName,feedback:'note',reason:fullReason,occasion:'Travel',weather:(ctx.weather&&ctx.weather.weatherProfile)||''});
   var box=document.getElementById('dislike-'+pieceKey);if(box)box.style.display='none';
-  var btn=box&&box.previousSibling;
-  // Mark the thumb button red
-  document.querySelectorAll('[onclick*="'+pieceKey+'"]').forEach(function(b){b.style.background='#FFF0F0';b.style.borderColor='#c0392b';});
+  // Mark feedback button as saved
+  var rows=document.querySelectorAll('[onclick*="showTravelDislike(\''+pieceKey+'\'"]');
+  rows.forEach(function(b){b.textContent='Saved';b.style.color='#4a7a5a';});
+}
+function markTravelDayWorn(dayIdx,dayLabel){
+  var btn=document.getElementById('worn-'+dayIdx);
+  if(!btn)return;
+  btn.textContent='\u2713 Worn';btn.style.background='#4a7a5a';btn.style.color='#fff';btn.disabled=true;
+  var ctx=window._travelOutfitContext||{};
+  var topSlots=['top','outerwear'];
+  var wornIds=[];
+  topSlots.forEach(function(slot){
+    var key='tv-'+dayIdx+'-'+slot;
+    var pieceCtx=ctx[key];
+    if(pieceCtx&&pieceCtx.piece)wornIds.push({id:key,cat:slot,name:pieceCtx.piece,ts:Date.now()});
+  });
+  try{
+    var existing=JSON.parse(localStorage.getItem('wb_wornTops')||'[]');
+    var cutoff=Date.now()-15*24*60*60*1000;
+    existing=existing.filter(function(e){return e.ts>cutoff;});
+    wornIds.forEach(function(w){if(!existing.find(function(e){return e.name===w.name;}))existing.push(w);});
+    localStorage.setItem('wb_wornTops',JSON.stringify(existing.slice(-100)));
+  }catch(e){}
+}
+async function regenerateTravelDay(dayIdx){
+  var redoBtns=document.querySelectorAll('[onclick="regenerateTravelDay('+dayIdx+')"]');
+  redoBtns.forEach(function(b){b.textContent='...';b.disabled=true;});
+  var result=window._lastTravelResult;
+  var ctx=window._travelFeedbackContext||{};
+  if(!result||!result.outfits||!result.outfits[dayIdx]){redoBtns.forEach(function(b){b.textContent='\u21B5 Redo';b.disabled=false;});return;}
+  var day=result.outfits[dayIdx];
+  var usedTops=result.outfits.filter(function(d,i){return i!==dayIdx;}).map(function(d){return d.outfit&&d.outfit.top?d.outfit.top.name:'';}).filter(Boolean);
+  var weatherCtx=ctx.weather?ctx.weather.weatherProfile:'';
+  var piecesList=(window._lastTravelPieces||[]).map(function(o){var parts=(o.description||'').split(' | ');return '[ID:'+o.id+'] '+(parts[1]?'['+parts[1].toUpperCase()+'] ':'')+parts[0];}).join('\n');
+  try{
+    var prompt='Suggest a DIFFERENT outfit for: '+day.day+' ('+day.occasion+'). Weather: '+weatherCtx+'.\nALREADY USED TOPS THIS TRIP - do not repeat: '+usedTops.join(', ')+'\nWARDROBE:\n'+piecesList+'\nRespond ONLY in JSON: {"top":{"name":"","wardrobeId":null},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}}';
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();
+    var raw=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
+    result.outfits[dayIdx].outfit=JSON.parse(raw);
+    renderTravelResult(result,ctx.destination||'',null,null,ctx.tripDays,ctx.weather);
+  }catch(e){redoBtns.forEach(function(b){b.textContent='\u21B5 Redo';b.disabled=false;});}
 }
 async function saveTravelFeedback(){
   var text=document.getElementById('travel-feedback-text').value.trim();if(!text)return;
