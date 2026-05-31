@@ -818,48 +818,35 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
   if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}voiceRecognition=null;}
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
-  activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
   var btn=document.getElementById(btnId);var statusEl=document.getElementById(statusId);
   if(btn)btn.classList.add('recording');
-  if(statusEl)statusEl.textContent='Listening... tap mic again to stop.';
-  var finalTranscript='';
-  function startRecognition(){
-    if(!voiceRecognitionActive)return;
-    var SpeechRec2=getSpeechRecognition();
-    if(!SpeechRec2)return;
-    if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}}
-    voiceRecognition=new SpeechRec2();
-    voiceRecognition.continuous=false;
-    voiceRecognition.interimResults=true;
-    voiceRecognition.lang='en-US';
-    voiceRecognition.onresult=function(event){
-      var interim='';
-      for(var i=event.resultIndex;i<event.results.length;i++){
-        if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
-        else interim+=event.results[i][0].transcript;
-      }
-      var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
-      if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
-    };
-    voiceRecognition.onerror=function(e){
-      if(e.error==='no-speech'||e.error==='aborted')return;
-      if(statusEl)statusEl.textContent='Mic error: '+e.error;
-      stopMicForTextarea();
-    };
-    voiceRecognition.onend=function(){
-      if(voiceRecognitionActive){
-        setTimeout(startRecognition,200);
-      }
-    };
-    try{voiceRecognition.start();}catch(ex){}
-  }
-  setTimeout(startRecognition,300);
+  if(statusEl)statusEl.textContent='Listening... speak now.';
+  activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
+  var ta=document.getElementById(textareaId);
+  var existingText=(ta&&ta.value)?ta.value.trim()+' ':'';
+  voiceRecognition=new SpeechRec();
+  voiceRecognition.continuous=false;
+  voiceRecognition.interimResults=false;
+  voiceRecognition.lang='en-US';
+  voiceRecognition.onresult=function(event){
+    var transcript='';
+    for(var i=0;i<event.results.length;i++){transcript+=event.results[i][0].transcript+' ';}
+    if(ta)ta.value=existingText+transcript.trim();
+    if(statusEl)statusEl.textContent='Got it! Tap mic to add more.';
+  };
+  voiceRecognition.onerror=function(e){
+    if(e.error==='no-speech'){if(statusEl)statusEl.textContent='Nothing heard. Tap mic to try again.';stopMicForTextarea();return;}
+    if(e.error==='aborted')return;
+    if(statusEl)statusEl.textContent='Mic error: '+e.error;
+    stopMicForTextarea();
+  };
+  voiceRecognition.onend=function(){stopMicForTextarea();};
+  setTimeout(function(){if(voiceRecognition){try{voiceRecognition.start();}catch(ex){if(statusEl)statusEl.textContent='Could not start mic.';stopMicForTextarea();}}},300);
 }
 function stopMicForTextarea(){
   voiceRecognitionActive=false;
   if(voiceRecognition){try{voiceRecognition.stop();}catch(e){}voiceRecognition=null;}
-  if(activeMicBtnId){var btn=document.getElementById(activeMicBtnId);if(btn)btn.classList.remove('recording');}
-  if(activeMicStatusId){var s=document.getElementById(activeMicStatusId);var ta=activeMicTextareaId?document.getElementById(activeMicTextareaId):null;if(s)s.textContent=(ta&&ta.value.length>0)?'Got it. Edit if needed.':'';}
+  if(activeMicBtnId){var b=document.getElementById(activeMicBtnId);if(b)b.classList.remove('recording');}
   var wasTravelMic=activeMicTextareaId==='travel-extra';
   activeMicBtnId=null;activeMicTextareaId=null;activeMicStatusId=null;
   if(wasTravelMic)checkTravelReady();
@@ -1973,9 +1960,24 @@ async function planTravel(){
   }
   var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse. Every piece works in 2+ outfits.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
-    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
-    var result=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim());
+    var rawText=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
+    var result;
+    try{result=JSON.parse(rawText);}catch(parseErr){
+      // Try to salvage truncated JSON by closing open structures
+      var fixed=rawText;
+      // Count unclosed braces/brackets and close them
+      var opens=0;var arr=0;
+      for(var ci=0;ci<fixed.length;ci++){if(fixed[ci]==='{')opens++;else if(fixed[ci]==='}')opens--;else if(fixed[ci]==='[')arr++;else if(fixed[ci]===']')arr--;}
+      // Close last incomplete string if needed
+      if(fixed.lastIndexOf('"')%2!==0)fixed+='"';
+      // Close incomplete object fields
+      if(fixed.charAt(fixed.length-1)===',')fixed=fixed.slice(0,-1);
+      while(arr>0){fixed+=']';arr--;}
+      while(opens>0){fixed+='}';opens--;}
+      try{result=JSON.parse(fixed);}catch(e2){throw new Error('Response was cut off (too long). Try fewer days or turn off Archive Only.');}
+    }
     window._travelFeedbackContext={destination:destination,weather:weather,tripDays:tripDays,travelType:travelType,travelLuggage:travelLuggage};
     renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather);
   }catch(e){var errEl=document.getElementById('travel-error');errEl.textContent='Error: '+(e.message||JSON.stringify(e));errEl.style.display='block';btn.disabled=false;btn.textContent='Plan My Wardrobe';}
