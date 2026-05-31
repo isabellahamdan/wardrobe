@@ -978,20 +978,15 @@ function startVoiceListening(){
     };
     voiceModeRecognition.onerror=function(e){
       voiceModeActive=false;
-      var btn=document.getElementById('voice-mic-big-btn');
-      var label=document.getElementById('voice-listening-label');
-      if(btn)btn.style.animation='';
-      if(e.error==='aborted'||e.error==='no-speech') return;
-      if(label)label.textContent='';
+      if(e.error==='aborted'||e.error==='no-speech') return; // ignore harmless events
+      var lbl=document.getElementById('voice-listening-label');if(lbl)lbl.textContent='Tap to speak';
+      var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='';
+      // Show error with a retry button
       document.getElementById('voice-transcript-live').innerHTML=
         '<span style="color:#c0392b">Mic issue ('+e.error+'). </span>'
         +'<button onclick="handleVoiceMicTap()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
     };
-    voiceModeRecognition.onend=function(){
-      voiceModeActive=false;
-      var btn=document.getElementById('voice-mic-big-btn');
-      if(btn)btn.style.animation='';
-    };
+    voiceModeRecognition.onend=function(){voiceModeActive=false;var mb=document.getElementById('voice-mic-big-btn');if(mb)mb.style.animation='';};
     try{
       voiceModeRecognition.start();
       voiceModeActive=true;
