@@ -807,6 +807,20 @@ var activeFbBtnId=null,activeFbTextareaId=null,activeFbStatusId=null;
 var voiceModeRecognition=null,voiceModeActive=false;
 var voiceModeTranscript='',voiceInterpretation=null;
 
+// ── GLOBAL MIC MANAGER ─────────────────────────────────────
+// iOS only allows ONE SpeechRecognition at a time.
+// Always call killAllMics() before starting any new recognition.
+var _activeMicInstance=null;
+function killAllMics(){
+  if(_activeMicInstance){try{_activeMicInstance.abort();}catch(e){}try{_activeMicInstance.stop();}catch(e){}}_activeMicInstance=null;
+  if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}try{voiceRecognition.stop();}catch(e){}voiceRecognition=null;}
+  if(feedbackMicRecognition){try{feedbackMicRecognition.abort();}catch(e){}try{feedbackMicRecognition.stop();}catch(e){}feedbackMicRecognition=null;}
+  if(searchMicRecognition){try{searchMicRecognition.abort();}catch(e){}try{searchMicRecognition.stop();}catch(e){}searchMicRecognition=null;}
+  if(voiceModeRecognition){try{voiceModeRecognition.abort();}catch(e){}try{voiceModeRecognition.stop();}catch(e){}voiceModeRecognition=null;}
+  if(travelVoiceRec){try{travelVoiceRec.abort();}catch(e){}try{travelVoiceRec.stop();}catch(e){}travelVoiceRec=null;}
+  voiceRecognitionActive=false;feedbackMicActive=false;searchMicActive=false;voiceModeActive=false;
+}
+
 // ── TABS ──────────────────────────────────────────────────
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
@@ -824,27 +838,34 @@ function getSpeechRecognition(){return window.SpeechRecognition||window.webkitSp
 
 function toggleMicForTextarea(textareaId,btnId,statusId){
   if(voiceRecognitionActive&&activeMicBtnId===btnId){stopMicForTextarea();return;}
-  if(voiceRecognitionActive)stopMicForTextarea();
+  killAllMics();
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
   activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
   var btn=document.getElementById(btnId);var statusEl=document.getElementById(statusId);
   if(btn)btn.classList.add('recording');
   if(statusEl)statusEl.textContent='Listening... tap mic again to stop.';
-  voiceRecognition=new SpeechRec();voiceRecognition.continuous=true;voiceRecognition.interimResults=true;voiceRecognition.lang='en-US';
   var finalTranscript='';
-  voiceRecognition.onresult=function(event){
-    var interim='';
-    for(var i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
-      else interim+=event.results[i][0].transcript;
-    }
-    var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
-    if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
-  };
-  voiceRecognition.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
-  voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
-  voiceRecognition.start();
+  function doStart(){
+    voiceRecognition=new SpeechRec();_activeMicInstance=voiceRecognition;
+    voiceRecognition.continuous=true;voiceRecognition.interimResults=true;voiceRecognition.lang='en-US';
+    voiceRecognition.onresult=function(event){
+      var interim='';
+      for(var i=event.resultIndex;i<event.results.length;i++){
+        if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
+        else interim+=event.results[i][0].transcript;
+      }
+      var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
+      if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
+    };
+    voiceRecognition.onerror=function(e){
+      if(statusEl)statusEl.textContent='Mic error: '+e.error+' ('+new Date().toLocaleTimeString()+')';
+      stopMicForTextarea();
+    };
+    voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
+    try{voiceRecognition.start();}catch(ex){if(statusEl)statusEl.textContent='Could not start: '+ex.message;}
+  }
+  setTimeout(doStart,400);
 }
 function stopMicForTextarea(){
   voiceRecognitionActive=false;
@@ -866,11 +887,12 @@ function toggleMicForSearch(inputId,btnId,onResultFn){
   }
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){alert('Voice not supported on this browser.');return;}
+  killAllMics();
   searchMicActive=true;
   var btn=document.getElementById(btnId);
   if(btn){btn.classList.add('recording');btn.textContent='\u23F9';}
   setTimeout(function(){
-    searchMicRecognition=new SpeechRec();
+    searchMicRecognition=new SpeechRec();_activeMicInstance=searchMicRecognition;
     searchMicRecognition.continuous=false;
     searchMicRecognition.interimResults=true;
     searchMicRecognition.lang='en-US';
@@ -890,32 +912,38 @@ function toggleMicForSearch(inputId,btnId,onResultFn){
       var b3=document.getElementById(btnId);if(b3){b3.classList.remove('recording');b3.textContent='\uD83C\uDFA4';}
     };
     searchMicRecognition.start();
-  },300);
+  },400);
 }
 
 function toggleMicForFeedback(textareaId,btnId,statusId){
   if(feedbackMicActive&&activeFbBtnId===btnId){stopMicForFeedback();return;}
-  if(feedbackMicActive)stopMicForFeedback();
+  killAllMics();
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
   activeFbBtnId=btnId;activeFbTextareaId=textareaId;activeFbStatusId=statusId;feedbackMicActive=true;
   var btn=document.getElementById(btnId);var statusEl=document.getElementById(statusId);
   if(btn){btn.classList.add('recording');btn.textContent='\u23F9';}
   if(statusEl)statusEl.textContent='Listening - speak freely...';
-  feedbackMicRecognition=new SpeechRec();feedbackMicRecognition.continuous=true;feedbackMicRecognition.interimResults=true;feedbackMicRecognition.lang='en-US';
   var finalText='';
-  feedbackMicRecognition.onresult=function(event){
-    var interim='';
-    for(var i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal)finalText+=event.results[i][0].transcript+' ';
-      else interim+=event.results[i][0].transcript;
-    }
-    var ta=document.getElementById(textareaId);if(ta)ta.value=finalText+(interim||'');
-    if(statusEl)statusEl.textContent='Listening... tap mic to stop';
-  };
-  feedbackMicRecognition.onerror=function(e){if(statusEl)statusEl.textContent='Mic error. Try again.';stopMicForFeedback();};
-  feedbackMicRecognition.onend=function(){if(feedbackMicActive)stopMicForFeedback();};
-  feedbackMicRecognition.start();
+  setTimeout(function(){
+    feedbackMicRecognition=new SpeechRec();_activeMicInstance=feedbackMicRecognition;
+    feedbackMicRecognition.continuous=true;feedbackMicRecognition.interimResults=true;feedbackMicRecognition.lang='en-US';
+    feedbackMicRecognition.onresult=function(event){
+      var interim='';
+      for(var i=event.resultIndex;i<event.results.length;i++){
+        if(event.results[i].isFinal)finalText+=event.results[i][0].transcript+' ';
+        else interim+=event.results[i][0].transcript;
+      }
+      var ta=document.getElementById(textareaId);if(ta)ta.value=finalText+(interim||'');
+      if(statusEl)statusEl.textContent='Listening... tap mic to stop';
+    };
+    feedbackMicRecognition.onerror=function(e){
+      if(statusEl)statusEl.textContent='Mic error: '+e.error+' ('+new Date().toLocaleTimeString()+')';
+      stopMicForFeedback();
+    };
+    feedbackMicRecognition.onend=function(){if(feedbackMicActive)stopMicForFeedback();};
+    try{feedbackMicRecognition.start();}catch(ex){if(statusEl)statusEl.textContent='Could not start: '+ex.message;}
+  },400);
 }
 function stopMicForFeedback(){
   feedbackMicActive=false;
@@ -960,13 +988,11 @@ function startVoiceListening(){
   voiceModeTranscript='';
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){document.getElementById('voice-transcript-live').textContent='Voice input not supported. Please use From Scratch instead.';return;}
-  // Kill any leftover recognition before starting (iOS aborts if you start twice)
-  if(voiceModeRecognition){try{voiceModeRecognition.abort();}catch(e){}voiceModeRecognition=null;}
-  voiceModeActive=false;
+  killAllMics();
   // Small delay so iOS releases the mic fully before we reopen it
   setTimeout(function(){
     var finalText='';
-    voiceModeRecognition=new SpeechRec();
+    voiceModeRecognition=new SpeechRec();_activeMicInstance=voiceModeRecognition;
     voiceModeRecognition.continuous=true;
     voiceModeRecognition.interimResults=true;
     voiceModeRecognition.lang='en-US';
@@ -986,7 +1012,7 @@ function startVoiceListening(){
       var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='';
       // Show error with a retry button
       document.getElementById('voice-transcript-live').innerHTML=
-        '<span style="color:#c0392b">Mic issue ('+e.error+'). </span>'
+        '<span style="color:#c0392b">Mic error: '+e.error+' ('+new Date().toLocaleTimeString()+'). </span>'
         +'<button onclick="handleVoiceMicTap()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
     };
     voiceModeRecognition.onend=function(){voiceModeActive=false;var mb=document.getElementById('voice-mic-big-btn');if(mb)mb.style.animation='';};
@@ -995,10 +1021,10 @@ function startVoiceListening(){
       voiceModeActive=true;
     }catch(startErr){
       document.getElementById('voice-transcript-live').innerHTML=
-        '<span style="color:#c0392b">Could not start mic. </span>'
+        '<span style="color:#c0392b">Could not start mic: '+startErr.message+'. </span>'
         +'<button onclick="startVoiceListening()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
     }
-  }, 300);
+  }, 400);
 }
 function stopVoiceListening(){
   voiceModeActive=false;
@@ -1969,29 +1995,37 @@ function startTravelVoice(){
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){if(statusEl)statusEl.textContent='Voice not supported on this browser.';return;}
   if(travelVoiceRec){try{travelVoiceRec.stop();}catch(e){}travelVoiceRec=null;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}return;}
+  killAllMics();
   if(btn){btn.style.background='#8B1A30';btn.innerHTML='&#9632;';}
   if(statusEl)statusEl.textContent='Listening... speak your trip, then tap to stop.';
-  travelVoiceRec=new SpeechRec();
-  travelVoiceRec.continuous=true;travelVoiceRec.interimResults=true;travelVoiceRec.lang='en-US';
   var finalTranscript='';
-  travelVoiceRec.onresult=function(e){
-    var interim='';
-    for(var i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal)finalTranscript+=e.results[i][0].transcript+' ';
-      else interim+=e.results[i][0].transcript;
-    }
-    if(statusEl)statusEl.textContent='Heard: '+(finalTranscript+interim).trim();
-  };
-  travelVoiceRec.onerror=function(e){if(e.error==='no-speech')return;if(statusEl)statusEl.textContent='Mic error: '+e.error;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}travelVoiceRec=null;};
-  travelVoiceRec.onend=function(){
-    if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
-    travelVoiceRec=null;
-    var best=finalTranscript.trim();
-    if(!best){if(statusEl)statusEl.textContent='Nothing heard. Tap mic, speak, then tap again to stop.';return;}
-    if(statusEl)statusEl.textContent='Parsing your trip...';
-    parseTravelVoice(best);
-  };
-  travelVoiceRec.start();
+  setTimeout(function(){
+    travelVoiceRec=new SpeechRec();_activeMicInstance=travelVoiceRec;
+    travelVoiceRec.continuous=true;travelVoiceRec.interimResults=true;travelVoiceRec.lang='en-US';
+    travelVoiceRec.onresult=function(e){
+      var interim='';
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal)finalTranscript+=e.results[i][0].transcript+' ';
+        else interim+=e.results[i][0].transcript;
+      }
+      if(statusEl)statusEl.textContent='Heard: '+(finalTranscript+interim).trim();
+    };
+    travelVoiceRec.onerror=function(e){
+      if(e.error==='no-speech')return;
+      if(statusEl)statusEl.textContent='Mic error: '+e.error+' ('+new Date().toLocaleTimeString()+')';
+      if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
+      travelVoiceRec=null;
+    };
+    travelVoiceRec.onend=function(){
+      if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
+      travelVoiceRec=null;
+      var best=finalTranscript.trim();
+      if(!best){if(statusEl)statusEl.textContent='Nothing heard. Tap mic, speak, then tap again to stop.';return;}
+      if(statusEl)statusEl.textContent='Parsing your trip...';
+      parseTravelVoice(best);
+    };
+    try{travelVoiceRec.start();}catch(ex){if(statusEl)statusEl.textContent='Could not start mic: '+ex.message;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}}
+  },400);
 }
 async function parseTravelVoice(transcript){
   var statusEl=document.getElementById('travel-voice-status');
