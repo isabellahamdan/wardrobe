@@ -822,20 +822,38 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
   var btn=document.getElementById(btnId);var statusEl=document.getElementById(statusId);
   if(btn)btn.classList.add('recording');
   if(statusEl)statusEl.textContent='Listening... tap mic again to stop.';
-  voiceRecognition=new SpeechRec();voiceRecognition.continuous=true;voiceRecognition.interimResults=true;voiceRecognition.lang='en-US';
   var finalTranscript='';
-  voiceRecognition.onresult=function(event){
-    var interim='';
-    for(var i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
-      else interim+=event.results[i][0].transcript;
-    }
-    var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
-    if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
-  };
-  voiceRecognition.onerror=function(e){if(e.error==='aborted'||e.error==='no-speech')return;if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
-  voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
-  setTimeout(function(){try{if(voiceRecognition)voiceRecognition.start();}catch(ex){}},300);
+  function startRecognition(){
+    if(!voiceRecognitionActive)return;
+    var SpeechRec2=getSpeechRecognition();
+    if(!SpeechRec2)return;
+    if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}}
+    voiceRecognition=new SpeechRec2();
+    voiceRecognition.continuous=false;
+    voiceRecognition.interimResults=true;
+    voiceRecognition.lang='en-US';
+    voiceRecognition.onresult=function(event){
+      var interim='';
+      for(var i=event.resultIndex;i<event.results.length;i++){
+        if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
+        else interim+=event.results[i][0].transcript;
+      }
+      var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
+      if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
+    };
+    voiceRecognition.onerror=function(e){
+      if(e.error==='no-speech'||e.error==='aborted')return;
+      if(statusEl)statusEl.textContent='Mic error: '+e.error;
+      stopMicForTextarea();
+    };
+    voiceRecognition.onend=function(){
+      if(voiceRecognitionActive){
+        setTimeout(startRecognition,200);
+      }
+    };
+    try{voiceRecognition.start();}catch(ex){}
+  }
+  setTimeout(startRecognition,300);
 }
 function stopMicForTextarea(){
   voiceRecognitionActive=false;
