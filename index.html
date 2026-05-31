@@ -484,6 +484,7 @@ button{cursor:pointer}
       <div id="archive-search-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;border-bottom:2px solid #000;padding-bottom:10px">
         <span style="font-size:18px">&#128269;</span>
         <input id="archive-search-input" type="text" placeholder="Search by name, colour, material..." autocomplete="off" style="flex:1;border:none;font-size:15px;font-family:'Cormorant Garamond',Georgia,serif;background:transparent;outline:none;color:#000" oninput="onArchiveSearch(this.value)">
+        <button id="archive-search-mic" onclick="toggleMicForSearch('archive-search-input','archive-search-mic',onArchiveSearch)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 2px;transition:transform 0.1s">&#127908;</button>
         <button id="archive-search-clear" onclick="clearArchiveSearch()" style="display:none;background:none;border:none;font-size:18px;color:#999;cursor:pointer;padding:0 4px">&#10005;</button>
       </div>
       <div id="wardrobe-gallery">
@@ -843,6 +844,43 @@ function stopMicForTextarea(){
   activeMicBtnId=null;activeMicTextareaId=null;activeMicStatusId=null;
 }
 
+var searchMicActive=false;var searchMicRecognition=null;
+function toggleMicForSearch(inputId,btnId,onResultFn){
+  if(searchMicActive){
+    searchMicActive=false;
+    if(searchMicRecognition){try{searchMicRecognition.abort();}catch(e){}searchMicRecognition=null;}
+    var b=document.getElementById(btnId);if(b){b.classList.remove('recording');b.textContent='\uD83C\uDFA4';}
+    return;
+  }
+  var SpeechRec=getSpeechRecognition();
+  if(!SpeechRec){alert('Voice not supported on this browser.');return;}
+  searchMicActive=true;
+  var btn=document.getElementById(btnId);
+  if(btn){btn.classList.add('recording');btn.textContent='\u23F9';}
+  setTimeout(function(){
+    searchMicRecognition=new SpeechRec();
+    searchMicRecognition.continuous=false;
+    searchMicRecognition.interimResults=true;
+    searchMicRecognition.lang='en-US';
+    var final='';
+    searchMicRecognition.onresult=function(event){
+      var interim='';
+      for(var i=event.resultIndex;i<event.results.length;i++){
+        if(event.results[i].isFinal)final+=event.results[i][0].transcript;
+        else interim+=event.results[i][0].transcript;
+      }
+      var inp=document.getElementById(inputId);
+      if(inp){inp.value=final||interim;onResultFn(inp.value);}
+    };
+    searchMicRecognition.onerror=function(e){if(e.error!=='aborted'&&e.error!=='no-speech'){var b2=document.getElementById(btnId);if(b2){b2.classList.remove('recording');b2.textContent='\uD83C\uDFA4';}searchMicActive=false;}};
+    searchMicRecognition.onend=function(){
+      searchMicActive=false;
+      var b3=document.getElementById(btnId);if(b3){b3.classList.remove('recording');b3.textContent='\uD83C\uDFA4';}
+    };
+    searchMicRecognition.start();
+  },300);
+}
+
 function toggleMicForFeedback(textareaId,btnId,statusId){
   if(feedbackMicActive&&activeFbBtnId===btnId){stopMicForFeedback();return;}
   if(feedbackMicActive)stopMicForFeedback();
@@ -1004,7 +1042,8 @@ function renderPiecePicker(){
   var catBtns=cats.map(function(c){var active=c===filter;return '<button onclick="setPiecerFilter(&quot;'+c+'&quot;)" style="padding:7px 12px;border:1px solid '+(active?'#000':'#e0e0e0')+';background:'+(active?'#000':'#fff')+';color:'+(active?'#fff':'#666')+';font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">'+c+'</button>';}).join('');
   var searchBar='<div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid #000;padding-bottom:8px;margin-bottom:12px">'
     +'<span style="font-size:16px">&#128269;</span>'
-    +'<input type="text" placeholder="Search pieces..." value="'+(window._pickerSearch||'')+'" oninput="onPickerSearch(this.value)" style="flex:1;border:none;font-size:14px;font-family:\'Cormorant Garamond\',Georgia,serif;background:transparent;outline:none;color:#000">'
+    +'<input type="text" id="picker-search-input" placeholder="Search pieces..." value="'+(window._pickerSearch||'')+'" oninput="onPickerSearch(this.value)" style="flex:1;border:none;font-size:14px;font-family:\'Cormorant Garamond\',Georgia,serif;background:transparent;outline:none;color:#000">'
+    +'<button id="picker-search-mic" onclick="toggleMicForSearch(\'picker-search-input\',\'picker-search-mic\',onPickerSearch)" style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px">&#127908;</button>'
     +(search?'<button onclick="clearPickerSearch()" style="background:none;border:none;font-size:16px;color:#999;cursor:pointer">&#10005;</button>':'')
     +'</div>';
   var pieceCards=filtered.map(function(p){var pName=(p.description?p.description.split(' | ')[0]:'')||'Piece';return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)"><img class="piece-picker-img" id="pickerimg-'+p.id+'" src="" style="background:#f0f0f0"><div class="piece-picker-name">'+pName+'</div><div class="piece-picker-check">&#10003;</div></div>';}).join('');
