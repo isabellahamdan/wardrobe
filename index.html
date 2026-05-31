@@ -1929,7 +1929,27 @@ async function planTravel(){
   var piecesList=pieces.map(function(o){return '[ID:'+o.id+'] '+(o.description||'');}).join('\n');
   var looksList=looks.map(function(o){var desc=o.description||'';try{var p=JSON.parse(desc);desc=p.description||desc;}catch(e){}return '[ID:'+o.id+'] '+o.occasion+' look: '+desc.slice(0,80);}).join('\n');
   var weatherContext=weather?'WEATHER: '+weather.weatherProfile+' ('+weather.minTemp+'\u00B0\u2013'+weather.maxTemp+'\u00B0C, '+weather.rainyDays+' rainy days)':'No forecast available - plan for typical weather.';
-  var travelArchiveInstruction=travelArchiveOnly?'ARCHIVE ONLY: Every piece MUST reference an [ID:xxx] from her wardrobe. No exceptions.':'Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
+  // Per-category counts for threshold logic
+  var catCounts={top:0,bottom:0,shoes:0,outerwear:0,accessories:0};
+  pieces.forEach(function(p){
+    var d=(p.description||'').toLowerCase();
+    if(d.indexOf('| top |')>=0||d.indexOf('| top')>=0)catCounts.top++;
+    else if(d.indexOf('| bottom |')>=0||d.indexOf('| bottom')>=0)catCounts.bottom++;
+    else if(d.indexOf('| shoes |')>=0||d.indexOf('| shoes')>=0)catCounts.shoes++;
+    else if(d.indexOf('| outerwear |')>=0||d.indexOf('| outerwear')>=0)catCounts.outerwear++;
+    else if(d.indexOf('| accessory |')>=0||d.indexOf('| bag |')>=0||d.indexOf('| jewellery |')>=0)catCounts.accessories++;
+  });
+  var travelArchiveInstruction;
+  if(travelArchiveOnly){
+    var thresholdMsg='ARCHIVE ONLY MODE — use [ID:xxx] references from her wardrobe for every slot.\n';
+    thresholdMsg+='EXCEPTION: If fewer than 10 options exist for a category, you may describe a piece vividly instead.\n';
+    thresholdMsg+='Category counts in her archive: tops='+catCounts.top+', bottoms='+catCounts.bottom+', shoes='+catCounts.shoes+', outerwear='+catCounts.outerwear+', accessories='+catCounts.accessories+'.\n';
+    thresholdMsg+='For categories with 10+ pieces: wardrobeId MUST be a real [ID:xxx] from the list below — do NOT invent IDs or leave null.\n';
+    thresholdMsg+='For bottoms specifically: her archive has '+catCounts.bottom+' bottoms — ALWAYS pick one by ID when archive-only is on.';
+    travelArchiveInstruction=thresholdMsg;
+  } else {
+    travelArchiveInstruction='Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
+  }
   var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse. Every piece works in 2+ outfits.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
@@ -1949,17 +1969,27 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
   html+='<div style="font-size:15px;color:#444;font-style:italic;line-height:1.6">'+(result.packingPhilosophy||'')+'</div></div>';
   if(result.outfits&&result.outfits.length){
     html+='<div class="section-label" style="margin-bottom:18px">Day by Day</div>';
+    var dayIdx=0;
     result.outfits.forEach(function(day){
       html+='<div class="travel-day-card"><div class="travel-day-label">'+day.day+'</div><div class="travel-day-occasion">'+day.occasion+'</div>';
       var o=day.outfit||{};
       [{key:'top',label:'Top'},{key:'bottom',label:'Bottom'},{key:'shoes',label:'Shoes'},{key:'outerwear',label:'Outerwear'},{key:'accessories',label:'Accessories'}].forEach(function(slot){
         var piece=o[slot.key];if(!piece||!piece.name||piece.name==='none'||piece.name==='N/A'||piece.name==='n/a'||!piece.name.trim())return;
         var matched=piece.wardrobeId?allOutfits.find(function(x){return x.id===piece.wardrobeId;}):null;var imgSrc=matched?(matched.image_data||matched.image_url):null;
-        html+='<div class="travel-piece-row">';
-        if(imgSrc)html+='<img src="'+imgSrc+'" class="travel-piece-thumb">';
+        var safeImgSrc=imgSrc?imgSrc.replace(/'/g,'&#39;'):'';
+        var safePieceName=piece.name.replace(/'/g,'&#39;');
+        var pieceKey='tv-'+dayIdx+'-'+slot.key;
+        html+='<div class="travel-piece-row" id="'+pieceKey+'">';
+        if(imgSrc)html+='<img src="'+safeImgSrc+'" class="travel-piece-thumb" style="cursor:zoom-in" onclick="openLightbox(\''+safeImgSrc+'\',\''+safePieceName+'\')">';
         else html+='<div class="travel-piece-thumb-empty"><span style="font-size:10px;color:#aaa;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">'+slot.label.slice(0,3).toUpperCase()+'</span></div>';
-        html+='<div><div class="travel-slot-label">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">&#10003;</span>':'')+'</div><div class="travel-slot-name">'+piece.name+'</div></div></div>';
+        html+='<div style="flex:1"><div class="travel-slot-label">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">&#10003;</span>':'')+'</div><div class="travel-slot-name">'+piece.name+'</div></div>';
+        html+='<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">';
+        html+='<button onclick="travelPieceFeedback(\''+pieceKey+'\',\'like\',\''+safePieceName+'\',this)" style="width:32px;height:32px;border:1px solid #e0e0e0;background:#fff;font-size:15px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center">&#128077;</button>';
+        html+='<button onclick="travelPieceFeedback(\''+pieceKey+'\',\'dislike\',\''+safePieceName+'\',this)" style="width:32px;height:32px;border:1px solid #e0e0e0;background:#fff;font-size:15px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center">&#128078;</button>';
+        html+='</div>';
+        html+='</div>';
       });
+      dayIdx++;
       if(day.stylistNote)html+='<div class="travel-stylist-note">'+day.stylistNote+'</div>';
       html+='</div>';
     });
@@ -1978,6 +2008,15 @@ function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather)
   document.getElementById('travel-plan-btn').disabled=false;document.getElementById('travel-plan-btn').textContent='Plan My Wardrobe';
   var fbTa=document.getElementById('travel-feedback-text');if(fbTa)fbTa.value='';
   var fbSt=document.getElementById('travel-fb-status');if(fbSt)fbSt.textContent='';
+}
+async function travelPieceFeedback(pieceKey,type,pieceName,btn){
+  var row=document.getElementById(pieceKey);
+  var btns=btn.parentNode.querySelectorAll('button');
+  btns.forEach(function(b){b.style.background='';b.style.borderColor='';});
+  if(type==='like'){btn.style.background='#F0FFF0';btn.style.borderColor='#6a9e6a';}
+  else{btn.style.background='#FFF0F0';btn.style.borderColor='#c0392b';}
+  var ctx=window._travelFeedbackContext||{};
+  await sb.from('style_feedback').insert({piece_name:pieceName,feedback:type,reason:type==='like'?'Liked in travel plan':'Disliked in travel plan',occasion:'Travel',weather:(ctx.weather&&ctx.weather.weatherProfile)||''});
 }
 async function saveTravelFeedback(){
   var text=document.getElementById('travel-feedback-text').value.trim();if(!text)return;
