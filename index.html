@@ -1898,18 +1898,25 @@ function startTravelVoice(){
   if(!SpeechRec){if(statusEl)statusEl.textContent='Voice not supported on this browser.';return;}
   if(travelVoiceRec){try{travelVoiceRec.stop();}catch(e){}travelVoiceRec=null;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}return;}
   if(btn){btn.style.background='#8B1A30';btn.innerHTML='&#9632;';}
-  if(statusEl)statusEl.textContent='Listening... tap to stop.';
+  if(statusEl)statusEl.textContent='Listening... speak your trip, then tap to stop.';
   travelVoiceRec=new SpeechRec();
-  travelVoiceRec.continuous=true;travelVoiceRec.interimResults=false;travelVoiceRec.lang='en-US';
-  var transcript='';
-  travelVoiceRec.onresult=function(e){for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)transcript+=e.results[i][0].transcript+' ';}};
-  travelVoiceRec.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}travelVoiceRec=null;};
+  travelVoiceRec.continuous=true;travelVoiceRec.interimResults=true;travelVoiceRec.lang='en-US';
+  var finalTranscript='';
+  travelVoiceRec.onresult=function(e){
+    var interim='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)finalTranscript+=e.results[i][0].transcript+' ';
+      else interim+=e.results[i][0].transcript;
+    }
+    if(statusEl)statusEl.textContent='Heard: '+(finalTranscript+interim).trim();
+  };
+  travelVoiceRec.onerror=function(e){if(e.error==='no-speech')return;if(statusEl)statusEl.textContent='Mic error: '+e.error;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}travelVoiceRec=null;};
   travelVoiceRec.onend=function(){
     if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
     travelVoiceRec=null;
-    if(!transcript.trim()){if(statusEl)statusEl.textContent='Nothing heard. Try again.';return;}
+    if(!finalTranscript.trim()){if(statusEl)statusEl.textContent='Nothing heard. Tap mic and speak, then tap again to stop.';return;}
     if(statusEl)statusEl.textContent='Parsing your trip...';
-    parseTravelVoice(transcript.trim());
+    parseTravelVoice(finalTranscript.trim());
   };
   travelVoiceRec.start();
 }
