@@ -815,38 +815,32 @@ function getSpeechRecognition(){return window.SpeechRecognition||window.webkitSp
 function toggleMicForTextarea(textareaId,btnId,statusId){
   if(voiceRecognitionActive&&activeMicBtnId===btnId){stopMicForTextarea();return;}
   if(voiceRecognitionActive)stopMicForTextarea();
-  if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}voiceRecognition=null;}
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
+  activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
   var btn=document.getElementById(btnId);var statusEl=document.getElementById(statusId);
   if(btn)btn.classList.add('recording');
-  if(statusEl)statusEl.textContent='Listening... speak now.';
-  activeMicBtnId=btnId;activeMicTextareaId=textareaId;activeMicStatusId=statusId;voiceRecognitionActive=true;
-  var ta=document.getElementById(textareaId);
-  var existingText=(ta&&ta.value)?ta.value.trim()+' ':'';
-  voiceRecognition=new SpeechRec();
-  voiceRecognition.continuous=false;
-  voiceRecognition.interimResults=false;
-  voiceRecognition.lang='en-US';
+  if(statusEl)statusEl.textContent='Listening... tap mic again to stop.';
+  voiceRecognition=new SpeechRec();voiceRecognition.continuous=true;voiceRecognition.interimResults=true;voiceRecognition.lang='en-US';
+  var finalTranscript='';
   voiceRecognition.onresult=function(event){
-    var transcript='';
-    for(var i=0;i<event.results.length;i++){transcript+=event.results[i][0].transcript+' ';}
-    if(ta)ta.value=existingText+transcript.trim();
-    if(statusEl)statusEl.textContent='Got it! Tap mic to add more.';
+    var interim='';
+    for(var i=event.resultIndex;i<event.results.length;i++){
+      if(event.results[i].isFinal)finalTranscript+=event.results[i][0].transcript+' ';
+      else interim+=event.results[i][0].transcript;
+    }
+    var ta=document.getElementById(textareaId);if(ta)ta.value=finalTranscript+(interim||'');
+    if(statusEl)statusEl.textContent='Listening... '+(finalTranscript+interim).length+' chars';
   };
-  voiceRecognition.onerror=function(e){
-    if(e.error==='no-speech'){if(statusEl)statusEl.textContent='Nothing heard. Tap mic to try again.';stopMicForTextarea();return;}
-    if(e.error==='aborted')return;
-    if(statusEl)statusEl.textContent='Mic error: '+e.error;
-    stopMicForTextarea();
-  };
-  voiceRecognition.onend=function(){stopMicForTextarea();};
-  setTimeout(function(){if(voiceRecognition){try{voiceRecognition.start();}catch(ex){if(statusEl)statusEl.textContent='Could not start mic.';stopMicForTextarea();}}},300);
+  voiceRecognition.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;stopMicForTextarea();};
+  voiceRecognition.onend=function(){if(voiceRecognitionActive)stopMicForTextarea();};
+  voiceRecognition.start();
 }
 function stopMicForTextarea(){
   voiceRecognitionActive=false;
   if(voiceRecognition){try{voiceRecognition.stop();}catch(e){}voiceRecognition=null;}
-  if(activeMicBtnId){var b=document.getElementById(activeMicBtnId);if(b)b.classList.remove('recording');}
+  if(activeMicBtnId){var btn=document.getElementById(activeMicBtnId);if(btn)btn.classList.remove('recording');}
+  if(activeMicStatusId){var s=document.getElementById(activeMicStatusId);var ta=activeMicTextareaId?document.getElementById(activeMicTextareaId):null;if(s)s.textContent=(ta&&ta.value.length>0)?'Got it. Edit if needed.':'';}
   var wasTravelMic=activeMicTextareaId==='travel-extra';
   activeMicBtnId=null;activeMicTextareaId=null;activeMicStatusId=null;
   if(wasTravelMic)checkTravelReady();
