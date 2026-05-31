@@ -155,7 +155,12 @@ button{cursor:pointer}
 .filter-btn.active{border-color:#000;color:#000}
 .gallery-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;background:#e0e0e0}
 .gallery-item{background:#fff;overflow:hidden;position:relative}
-.gallery-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.gallery-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;cursor:zoom-in}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
+#lightbox.open{display:flex}
+#lightbox-img{max-width:100vw;max-height:90vh;object-fit:contain;touch-action:pinch-zoom;user-select:none;-webkit-user-select:none}
+#lightbox-close{position:absolute;top:16px;right:20px;color:#fff;font-size:32px;font-weight:300;cursor:pointer;z-index:9999;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.15);border-radius:50%;border:none}
+#lightbox-name{position:absolute;bottom:0;left:0;right:0;padding:16px 20px;color:#fff;font-size:15px;font-weight:700;font-family:'Cormorant Garamond',Georgia,serif;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.7))}
 .delete-btn{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
 .upload-zone{border:1px solid #e0e0e0;border-top:2px solid #000;padding:40px 24px;text-align:center;cursor:pointer;margin-bottom:20px;transition:all 0.2s;background:#fff}
 .batch-upload-zone{border:1px solid #e0e0e0;border-top:2px solid #6B2D3E;padding:32px 24px;text-align:center;cursor:pointer;margin-bottom:20px;transition:all 0.2s;background:#fdf5f7}
@@ -475,6 +480,11 @@ button{cursor:pointer}
       <div class="archive-type-nav" id="archive-type-nav" style="display:flex">
         <button class="archive-type-btn active" id="btn-looks" onclick="switchArchiveType('looks',this)">Looks</button>
         <button class="archive-type-btn" id="btn-pieces" onclick="switchArchiveType('pieces',this)">Pieces</button>
+      </div>
+      <div id="archive-search-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;border-bottom:2px solid #000;padding-bottom:10px">
+        <span style="font-size:18px">&#128269;</span>
+        <input id="archive-search-input" type="text" placeholder="Search by name, colour, material..." autocomplete="off" style="flex:1;border:none;font-size:15px;font-family:'Cormorant Garamond',Georgia,serif;background:transparent;outline:none;color:#000" oninput="onArchiveSearch(this.value)">
+        <button id="archive-search-clear" onclick="clearArchiveSearch()" style="display:none;background:none;border:none;font-size:18px;color:#999;cursor:pointer;padding:0 4px">&#10005;</button>
       </div>
       <div id="wardrobe-gallery">
         <div id="looks-filters" style="margin-bottom:16px">
@@ -971,19 +981,37 @@ async function confirmVoiceAndCompose(){
 async function loadPiecePicker(){
   var container=document.getElementById('piece-picker-container');
   container.innerHTML='<div class="loading-dot">Loading your pieces...</div>';
-  var resp=await sb.from('outfits').select('id,description,image_data,image_url,occasion,photo_type').eq('photo_type','Individual Piece').order('created_at',{ascending:false});
+  var resp=await sb.from('outfits').select('id,description,image_url,occasion,photo_type').eq('photo_type','Individual Piece').order('created_at',{ascending:false});
   if(!resp.data||resp.data.length===0){container.innerHTML='<div class="empty-state"><div class="empty-text">No individual pieces yet.</div></div>';return;}
-  window._allPieces=resp.data;window._pickerFilter='All';renderPiecePicker();
+  window._allPieces=resp.data;window._pickerFilter='All';window._pickerSearch='';renderPiecePicker();
+  // load images in batches
+  var ids=resp.data.map(function(p){return p.id;});
+  for(var bi=0;bi<ids.length;bi+=20){
+    var batch=ids.slice(bi,bi+20);
+    var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',batch);
+    if(ir.data){ir.data.forEach(function(row){
+      var el=document.getElementById('pickerimg-'+row.id);
+      if(el)el.src=row.image_data||row.image_url||'';
+    });}
+  }
 }
 function renderPiecePicker(){
-  var data=window._allPieces||[];var filter=window._pickerFilter||'All';
+  var data=window._allPieces||[];var filter=window._pickerFilter||'All';var search=(window._pickerSearch||'').toLowerCase();
   var cats=['All','Top','Bottom','Dress','Shoes','Outerwear','Accessory','Bag','Jewellery'];
   var filtered=filter==='All'?data:data.filter(function(p){var parts=(p.description||'').split(' | ');return parts.some(function(pt){return pt.trim()===filter;});});
+  if(search)filtered=filtered.filter(function(p){return ((p.description||'')+' '+(p.occasion||'')).toLowerCase().indexOf(search)>=0;});
   var container=document.getElementById('piece-picker-container');
   var catBtns=cats.map(function(c){var active=c===filter;return '<button onclick="setPiecerFilter(&quot;'+c+'&quot;)" style="padding:7px 12px;border:1px solid '+(active?'#000':'#e0e0e0')+';background:'+(active?'#000':'#fff')+';color:'+(active?'#fff':'#666')+';font-size:11px;letter-spacing:0.15em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">'+c+'</button>';}).join('');
-  var pieceCards=filtered.map(function(p){var pName=(p.description?p.description.split(' | ')[0]:'')||'Piece';var pImg=p.image_data||p.image_url||'';return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)"><img class="piece-picker-img" src="'+pImg+'" onerror="this.style.display=&quot;none&quot;"><div class="piece-picker-name">'+pName+'</div><div class="piece-picker-check">&#10003;</div></div>';}).join('');
-  container.innerHTML='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'+catBtns+'</div>'+(filtered.length===0?'<div style="padding:20px;text-align:center;font-size:15px;color:#999;font-style:italic">No pieces in this category.</div>':'<div class="piece-picker-grid">'+pieceCards+'</div>');
+  var searchBar='<div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid #000;padding-bottom:8px;margin-bottom:12px">'
+    +'<span style="font-size:16px">&#128269;</span>'
+    +'<input type="text" placeholder="Search pieces..." value="'+(window._pickerSearch||'')+'" oninput="onPickerSearch(this.value)" style="flex:1;border:none;font-size:14px;font-family:\'Cormorant Garamond\',Georgia,serif;background:transparent;outline:none;color:#000">'
+    +(search?'<button onclick="clearPickerSearch()" style="background:none;border:none;font-size:16px;color:#999;cursor:pointer">&#10005;</button>':'')
+    +'</div>';
+  var pieceCards=filtered.map(function(p){var pName=(p.description?p.description.split(' | ')[0]:'')||'Piece';return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)"><img class="piece-picker-img" id="pickerimg-'+p.id+'" src="" style="background:#f0f0f0"><div class="piece-picker-name">'+pName+'</div><div class="piece-picker-check">&#10003;</div></div>';}).join('');
+  container.innerHTML=searchBar+'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'+catBtns+'</div>'+(filtered.length===0?'<div style="padding:20px;text-align:center;font-size:15px;color:#999;font-style:italic">No pieces found.</div>':'<div class="piece-picker-grid">'+pieceCards+'</div>');
 }
+function onPickerSearch(val){window._pickerSearch=val;renderPiecePicker();if(selectedPieceId){var pe=document.getElementById('picker-'+selectedPieceId);if(pe)pe.classList.add('selected');}}
+function clearPickerSearch(){window._pickerSearch='';renderPiecePicker();}
 function setPiecerFilter(cat){window._pickerFilter=cat;renderPiecePicker();if(selectedPieceId){var pe=document.getElementById('picker-'+selectedPieceId);if(pe)pe.classList.add('selected');}}
 function selectPiece(id){
   document.querySelectorAll('.piece-picker-item').forEach(function(el){el.classList.remove('selected');});
@@ -1191,6 +1219,7 @@ function switchWardrobe(view){
   document.getElementById('wardrobe-upload').style.display=view==='upload'?'block':'none';
   document.getElementById('wardrobe-batch').style.display=view==='batch'?'block':'none';
   document.getElementById('archive-type-nav').style.display=view==='gallery'?'flex':'none';
+  document.getElementById('archive-search-bar').style.display=view==='gallery'?'flex':'none';
   document.getElementById('btn-gallery').classList.toggle('active',view==='gallery');
   document.getElementById('btn-upload').classList.toggle('active',view==='upload');
   var batchBtn=document.getElementById('btn-batch');if(batchBtn)batchBtn.classList.toggle('active',view==='batch');
@@ -1201,6 +1230,9 @@ function switchArchiveType(type,btn){
   document.getElementById('looks-filters').style.display=type==='looks'?'block':'none';
   document.getElementById('pieces-filters').style.display=type==='pieces'?'block':'none';
   filterOccasion='All';filterWeather='All';filterCategory='All';
+  archiveSearch='';
+  var si=document.getElementById('archive-search-input');if(si)si.value='';
+  var sc=document.getElementById('archive-search-clear');if(sc)sc.style.display='none';
   document.querySelectorAll('#looks-filters .filter-btn,#pieces-cat-row .filter-btn,#pieces-occ-row .filter-btn,#pieces-wx-row .filter-btn').forEach(function(b){b.classList.remove('active');if(b.textContent==='All')b.classList.add('active');});
   loadGallery();
 }
@@ -1551,6 +1583,48 @@ function resetBatch(){
   if(btn){btn.disabled=true;btn.textContent='Save All';}
 }
 
+function openLightbox(src,name){
+  var lb=document.getElementById('lightbox');
+  var img=document.getElementById('lightbox-img');
+  var nm=document.getElementById('lightbox-name');
+  img.src=src;
+  nm.textContent=name||'';
+  lb.className='open';
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').className='';
+  document.getElementById('lightbox-img').src='';
+  document.body.style.overflow='';
+}
+// Close on swipe down
+(function(){
+  var startY=0;
+  document.addEventListener('touchstart',function(e){
+    var lb=document.getElementById('lightbox');
+    if(lb.className==='open')startY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    var lb=document.getElementById('lightbox');
+    if(lb.className==='open'){
+      var dy=e.changedTouches[0].clientY-startY;
+      if(dy>80)closeLightbox();
+    }
+  },{passive:true});
+}());
+
+var archiveSearch='';
+function onArchiveSearch(val){
+  archiveSearch=val.trim().toLowerCase();
+  document.getElementById('archive-search-clear').style.display=archiveSearch?'block':'none';
+  loadGallery();
+}
+function clearArchiveSearch(){
+  archiveSearch='';
+  document.getElementById('archive-search-input').value='';
+  document.getElementById('archive-search-clear').style.display='none';
+  loadGallery();
+}
 function filterBy(type,val,btn){
   if(type==='occasion')filterOccasion=val;else if(type==='weather')filterWeather=val;else if(type==='category')filterCategory=val;
   document.querySelectorAll('.filter-btn').forEach(function(b){if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf("'"+type+"'")>=0)b.classList.remove('active');});
@@ -1586,11 +1660,17 @@ async function loadGallery(){
       var wxOk=filterWeather==='All'||wx===''||wx.toLowerCase()==='all'||wx.split(',').some(function(w){return w.trim().toLowerCase()===filterWeather.toLowerCase();});
       return occOk&&wxOk;
     });
+    if(archiveSearch){
+      data=data.filter(function(item){
+        var haystack=((item.description||'')+' '+(item.occasion||'')+' '+(item.weather||'')).toLowerCase();
+        return haystack.indexOf(archiveSearch)>=0;
+      });
+    }
     document.getElementById('gallery-loading').style.display='none';
     if(!data||data.length===0){
       document.getElementById('gallery-empty').style.display='block';
       var isFiltered=(isPiecesView&&(filterCategory!=='All'||filterOccasion!=='All'||filterWeather!=='All'))||(!isPiecesView&&(filterOccasion!=='All'||filterWeather!=='All'));
-      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=isFiltered?'No items match this filter. ('+typeRows.length+' total)':'Nothing here yet. (DB: '+allRows.length+', type: '+typeRows.length+')';
+      document.getElementById('gallery-empty').querySelector('.empty-text').textContent=(isFiltered||archiveSearch)?'No items match. ('+typeRows.length+' total)':'Nothing here yet. (DB: '+allRows.length+', type: '+typeRows.length+')';
       return;
     }
     document.getElementById('gallery-grid').style.display='grid';
@@ -1601,9 +1681,9 @@ async function loadGallery(){
       var safeWx=(item.weather||'').replace(/'/g,"\\'");
       var safeDesc=(item.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return '<div class="gallery-item" id="item-'+item.id+'"><div style="position:relative">'
-        +'<img class="gallery-img" id="img-'+item.id+'" src="" style="background:#f0f0f0" loading="lazy">'
+        +'<img class="gallery-img" id="img-'+item.id+'" src="" style="background:#f0f0f0" loading="lazy" onclick="openLightbox(this.src,\''+safeDesc.split('|')[0].trim()+'\')">'
         +nameHtml
-        +'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+safeOcc+'\',\''+safeWx+'\',\''+safeDesc+'\')">&#9998;&#65039;</button>'
+        +'<button class="delete-btn" style="right:32px" onclick="openEditItem(\''+item.id+'\',\''+safeOcc+'\',\''+safeWx+'\',\''+safeDesc+'\',\''+(item.photo_type||'Full Outfit')+'\')">&#9998;&#65039;</button>'
         +'<button class="delete-btn" onclick="deleteItem(\''+item.id+'\')">&#10005;</button>'
         +'</div></div>';
     }).join('');
@@ -1711,25 +1791,43 @@ async function loadInfluencers(){
 }
 
 // ── EDIT MODAL ────────────────────────────────────────────
-var _editId=null,_editOccs=[],_editWxs=[];
+var _editId=null,_editOccs=[],_editWxs=[],_editPhotoType='Full Outfit';
 var editOccColors={Day:'#3A3530',Work:'#2E3F6F','Night Out':'#6B2D3E',Event:'#4A4A6A'};
 var editWxColors={Warm:'#8B6914',Mild:'#4A7A5A','Cold/Rain':'#4A5A7A',Winter:'#5A4A7A'};
-function openEditItem(id,occ,wx,desc){
+function openEditItem(id,occ,wx,desc,photoType){
   _editId=id;_editOccs=occ?occ.split(','):[];_editWxs=wx?wx.split(','):[];
+  _editPhotoType=photoType||'Full Outfit';
   document.getElementById('edit-desc-input').value=desc.split(' | ')[0]||'';
   document.querySelectorAll('#edit-occ-grid .tag-btn,#edit-wx-grid .tag-btn').forEach(function(b){b.style.background='';b.style.borderColor='';b.style.color='';});
   document.querySelectorAll('#edit-occ-grid .tag-btn').forEach(function(b){if(_editOccs.indexOf(b.textContent.trim())>=0){b.style.background=editOccColors[b.textContent.trim()]||'#000';b.style.borderColor=editOccColors[b.textContent.trim()]||'#000';b.style.color='#fff';}});
   document.querySelectorAll('#edit-wx-grid .tag-btn').forEach(function(b){if(_editWxs.indexOf(b.textContent.trim())>=0){b.style.background=editWxColors[b.textContent.trim()]||'#000';b.style.borderColor=editWxColors[b.textContent.trim()]||'#000';b.style.color='#fff';}});
   document.getElementById('edit-occ-section').style.display=occ==='All'?'none':'block';
   document.getElementById('edit-wx-section').style.display=occ==='All'?'none':'block';
+  var isPiece=_editPhotoType==='Individual Piece';
+  document.getElementById('edit-type-piece').style.background=isPiece?'#000':'#fff';
+  document.getElementById('edit-type-piece').style.color=isPiece?'#fff':'#000';
+  document.getElementById('edit-type-piece').style.borderColor=isPiece?'#000':'#e0e0e0';
+  document.getElementById('edit-type-look').style.background=isPiece?'#fff':'#000';
+  document.getElementById('edit-type-look').style.color=isPiece?'#000':'#fff';
+  document.getElementById('edit-type-look').style.borderColor=isPiece?'#e0e0e0':'#000';
   document.getElementById('edit-modal').style.display='flex';
+}
+function setEditType(type,btn){
+  _editPhotoType=type;
+  var isPiece=type==='Individual Piece';
+  document.getElementById('edit-type-piece').style.background=isPiece?'#000':'#fff';
+  document.getElementById('edit-type-piece').style.color=isPiece?'#fff':'#000';
+  document.getElementById('edit-type-piece').style.borderColor=isPiece?'#000':'#e0e0e0';
+  document.getElementById('edit-type-look').style.background=isPiece?'#fff':'#000';
+  document.getElementById('edit-type-look').style.color=isPiece?'#000':'#fff';
+  document.getElementById('edit-type-look').style.borderColor=isPiece?'#e0e0e0':'#000';
 }
 function setEditTag(type,val,btn){
   if(type==='occ'){if(_editOccs.indexOf(val)>=0){_editOccs=_editOccs.filter(function(v){return v!==val;});btn.style.background='';btn.style.borderColor='';btn.style.color='';}else{_editOccs.push(val);btn.style.background=editOccColors[val]||'#000';btn.style.borderColor=editOccColors[val]||'#000';btn.style.color='#fff';}}
   else{if(_editWxs.indexOf(val)>=0){_editWxs=_editWxs.filter(function(v){return v!==val;});btn.style.background='';btn.style.borderColor='';btn.style.color='';}else{_editWxs.push(val);btn.style.background=editWxColors[val]||'#000';btn.style.borderColor=editWxColors[val]||'#000';btn.style.color='#fff';}}
 }
 function closeEditItem(){document.getElementById('edit-modal').style.display='none';}
-async function saveEditItem(){var desc=document.getElementById('edit-desc-input').value.trim();var resp=await sb.from('outfits').update({occasion:_editOccs.join(','),weather:_editWxs.join(','),description:desc||null}).eq('id',_editId);if(!resp.error){closeEditItem();loadGallery();}else alert('Save failed: '+resp.error.message);}
+async function saveEditItem(){var desc=document.getElementById('edit-desc-input').value.trim();var resp=await sb.from('outfits').update({occasion:_editOccs.join(','),weather:_editWxs.join(','),description:desc||null,photo_type:_editPhotoType}).eq('id',_editId);if(!resp.error){closeEditItem();loadGallery();}else alert('Save failed: '+resp.error.message);}
 
 // ── TRAVEL ════════════════════════════════════════════════
 var travelType=null,travelLuggage=null;
@@ -1866,8 +1964,13 @@ function resetTravel(){
 <!-- EDIT MODAL -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;align-items:flex-end;justify-content:center;">
   <div style="background:#fff;width:100%;max-width:580px;padding:28px 24px 48px;border-top:3px solid #000;">
-    <div style="font-size:13px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:20px">Edit Tags</div>
+    <div style="font-size:13px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:20px">Edit Item</div>
     <input type="text" id="edit-desc-input" placeholder="Name / description..." style="width:100%;border:none;border-bottom:2px solid #000;padding:12px 0;font-size:19px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;margin-bottom:24px;background:transparent;color:#000;">
+    <div style="font-size:13px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:8px">Type</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:20px">
+      <button id="edit-type-piece" onclick="setEditType('Individual Piece',this)" style="padding:14px;border:1px solid #e0e0e0;background:#fff;font-size:12px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Individual Piece</button>
+      <button id="edit-type-look" onclick="setEditType('Full Outfit',this)" style="padding:14px;border:1px solid #e0e0e0;background:#fff;font-size:12px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Full Look</button>
+    </div>
     <div id="edit-occ-section">
       <div style="font-size:13px;letter-spacing:0.35em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:4px">Occasion</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:20px" id="edit-occ-grid">
@@ -1893,5 +1996,10 @@ function resetTravel(){
   </div>
 </div>
 
+  <div id="lightbox" onclick="closeLightbox()">
+    <button id="lightbox-close" onclick="closeLightbox()">&#10005;</button>
+    <img id="lightbox-img" src="" onclick="event.stopPropagation()">
+    <div id="lightbox-name"></div>
+  </div>
 </body>
 </html>
