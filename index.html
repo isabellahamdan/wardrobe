@@ -1886,7 +1886,7 @@ function checkTravelReady(){
   var extra=(document.getElementById('travel-extra')&&document.getElementById('travel-extra').value.trim())||'';
   // Ready if: dest + dates + (type & luggage selected OR voice note covers it)
   var tagsReady=travelType&&travelLuggage;
-  var voiceCoversIt=extra.length>20; // spoken something meaningful
+  var voiceCoversIt=extra.length>0;
   document.getElementById('travel-plan-btn').disabled=!(dest&&from&&to&&(tagsReady||voiceCoversIt));
 }
 document.addEventListener('DOMContentLoaded',function(){
@@ -1920,20 +1920,43 @@ async function planTravel(){
   var tripDays=Math.round((new Date(dateTo)-new Date(dateFrom))/86400000)+1;
   var weather=await fetchTripWeather(destination,dateFrom,dateTo);
   btn.textContent='Planning your wardrobe...';
-  var outfitsResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_data,image_url').order('created_at',{ascending:false}).limit(40);
-  var outfits=outfitsResp.data||[];var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});window._lastOutfits=outfits;
+  // Fetch metadata only first (no image_data) to avoid timeout with large archives
+  var outfitsResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(300);
+  var outfits=outfitsResp.data||[];var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
+  // Batch-load image_data for pieces only (needed for display)
+  var pieceIds=pieces.map(function(p){return p.id;});
+  var imageMap={};
+  for(var bi=0;bi<pieceIds.length;bi+=20){
+    var batch=pieceIds.slice(bi,bi+20);
+    var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',batch);
+    if(ir.data){ir.data.forEach(function(row){imageMap[row.id]=row.image_data||row.image_url||null;});}
+  }
+  // Merge image data back into pieces
+  pieces.forEach(function(p){if(imageMap[p.id])p.image_data=imageMap[p.id];});
+  window._lastOutfits=outfits;
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
   var textTips=(inspoResp.data||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
   var tipsStr=textTips.map(function(i){return '- '+(i.ai_summary||(i.text_content||'').split('\n')[0]);}).filter(Boolean).slice(0,15).join('\n');
   var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(40);
   var fbNotes=(fbResp.data||[]).filter(function(f){return f.feedback==='note'||f.feedback==='dislike';});
   var fbContext=fbNotes.length>0?'\n\nHER FEEDBACK & PREFERENCES:\n'+fbNotes.slice(0,10).map(function(f){return '- '+(f.reason||f.piece_name);}).join('\n'):'';
-  var piecesList=pieces.map(function(o){return '[ID:'+o.id+'] '+(o.description||'');}).join('\n');
+  // Pre-filter pieces by weather relevance — send everything that's relevant, skip clearly wrong-season items
+  var weatherProfile=weather?weather.weatherProfile.toLowerCase():'';
+  var isWarm=weatherProfile.indexOf('warm')>=0||weatherProfile.indexOf('hot')>=0;
+  var isCold=weatherProfile.indexOf('cold')>=0||weatherProfile.indexOf('winter')>=0;
+  var relevantPieces=pieces.filter(function(p){
+    var wx=(p.weather||'').toLowerCase();
+    if(!wx||wx==='all')return true;
+    if(isWarm&&(wx.indexOf('winter')>=0)&&wx.indexOf('warm')<0&&wx.indexOf('mild')<0)return false;
+    if(isCold&&(wx.indexOf('warm')>=0)&&wx.indexOf('cold')<0&&wx.indexOf('mild')<0)return false;
+    return true;
+  });
+  var piecesList=relevantPieces.map(function(o){return '[ID:'+o.id+'] '+(o.description||'');}).join('\n');
   var looksList=looks.map(function(o){var desc=o.description||'';try{var p=JSON.parse(desc);desc=p.description||desc;}catch(e){}return '[ID:'+o.id+'] '+o.occasion+' look: '+desc.slice(0,80);}).join('\n');
   var weatherContext=weather?'WEATHER: '+weather.weatherProfile+' ('+weather.minTemp+'\u00B0\u2013'+weather.maxTemp+'\u00B0C, '+weather.rainyDays+' rainy days)':'No forecast available - plan for typical weather.';
   // Per-category counts for threshold logic
   var catCounts={top:0,bottom:0,shoes:0,outerwear:0,accessories:0};
-  pieces.forEach(function(p){
+  relevantPieces.forEach(function(p){
     var d=(p.description||'').toLowerCase();
     if(d.indexOf('| top |')>=0||d.indexOf('| top')>=0)catCounts.top++;
     else if(d.indexOf('| bottom |')>=0||d.indexOf('| bottom')>=0)catCounts.bottom++;
