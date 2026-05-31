@@ -841,7 +841,9 @@ function stopMicForTextarea(){
   if(voiceRecognition){try{voiceRecognition.stop();}catch(e){}voiceRecognition=null;}
   if(activeMicBtnId){var btn=document.getElementById(activeMicBtnId);if(btn)btn.classList.remove('recording');}
   if(activeMicStatusId){var s=document.getElementById(activeMicStatusId);var ta=activeMicTextareaId?document.getElementById(activeMicTextareaId):null;if(s)s.textContent=(ta&&ta.value.length>0)?'Got it. Edit if needed.':'';}
+  var wasTravelMic=activeMicTextareaId==='travel-extra';
   activeMicBtnId=null;activeMicTextareaId=null;activeMicStatusId=null;
+  if(wasTravelMic)checkTravelReady();
 }
 
 var searchMicActive=false;var searchMicRecognition=null;
