@@ -935,18 +935,21 @@ function selectStyleMode(mode,btn){
   document.getElementById('stylist-voice').style.display='none';
   if(mode==='scratch'){document.getElementById('stylist-scratch').style.display='block';}
   else if(mode==='piece'){document.getElementById('stylist-piece').style.display='block';loadPiecePicker();}
-  else if(mode==='voice'){document.getElementById('stylist-voice').style.display='block';}
+  else if(mode==='voice'){
+    document.getElementById('stylist-voice').style.display='block';
+    var lbl=document.getElementById('voice-listening-label');if(lbl)lbl.textContent='Listening...';
+    var doneBtn=document.getElementById('voice-done-btn');if(doneBtn)doneBtn.style.display='block';
+    var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='micPulse 1.2s infinite';
+    startVoiceListening();
+  }
 }
 function handleVoiceMicTap(){
-  var btn=document.getElementById('voice-mic-big-btn');
-  var label=document.getElementById('voice-listening-label');
-  var doneBtn=document.getElementById('voice-done-btn');
   if(voiceModeActive){
     stopVoiceListening();
   } else {
-    if(btn)btn.style.animation='micPulse 1.2s infinite';
-    if(label)label.textContent='Listening...';
-    if(doneBtn)doneBtn.style.display='block';
+    var lbl=document.getElementById('voice-listening-label');if(lbl)lbl.textContent='Listening...';
+    var doneBtn=document.getElementById('voice-done-btn');if(doneBtn)doneBtn.style.display='block';
+    var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='micPulse 1.2s infinite';
     startVoiceListening();
   }
 }
@@ -1008,11 +1011,10 @@ function redoVoice(){
   document.getElementById('voice-understanding-state').style.display='none';
   document.getElementById('voice-listening-state').style.display='block';
   document.getElementById('voice-transcript-live').textContent='';
-  var label=document.getElementById('voice-listening-label');
-  var doneBtn=document.getElementById('voice-done-btn');
-  if(label)label.textContent='Tap to speak';
-  if(doneBtn)doneBtn.style.display='none';
-  voiceModeTranscript='';voiceInterpretation=null;
+  var lbl=document.getElementById('voice-listening-label');if(lbl)lbl.textContent='Listening...';
+  var doneBtn=document.getElementById('voice-done-btn');if(doneBtn)doneBtn.style.display='block';
+  var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='micPulse 1.2s infinite';
+  voiceModeTranscript='';voiceInterpretation=null;startVoiceListening();
 }
 async function interpretVoiceRequest(transcript){
   document.getElementById('voice-listening-state').style.display='none';
