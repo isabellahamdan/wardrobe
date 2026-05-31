@@ -664,6 +664,17 @@ button{cursor:pointer}
     <div id="tab-travel" style="display:none;animation:fadeUp 0.4s ease">
       <div id="travel-planner">
         <div class="section-label" style="margin-bottom:20px">Plan your trip wardrobe</div>
+
+        <!-- VOICE ENTRY -->
+        <div style="border:1px solid #e0e0e0;border-top:2px solid #6B2D3E;padding:18px 20px;margin-bottom:24px;background:#fdf5f7">
+          <div style="font-size:13px;letter-spacing:0.3em;color:#6B2D3E;text-transform:uppercase;font-weight:700;margin-bottom:6px">Tell me your trip</div>
+          <div style="font-size:15px;color:#888;font-style:italic;margin-bottom:14px;line-height:1.5">e.g. "Valencia, 7th to 14th June, work trip, checked bag, workshops and dinners"</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button id="mic-travel-voice" onclick="startTravelVoice()" ontouchstart="event.preventDefault();startTravelVoice()" style="width:52px;height:52px;border-radius:50%;background:#6B2D3E;border:none;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#127897;</button>
+            <div id="travel-voice-status" style="font-size:15px;color:#6B2D3E;font-style:italic;line-height:1.5"></div>
+          </div>
+        </div>
+
         <div style="margin-bottom:24px">
           <div class="section-label">Destination</div>
           <input type="text" id="travel-destination" placeholder="e.g. Paris, New York, Tokyo..." style="width:100%;background:#fff;border:none;border-bottom:2px solid #000;padding:14px 0;color:#000;font-size:20px;font-family:inherit;font-weight:700;">
@@ -1878,6 +1889,57 @@ function selectTravelTag(type,val,btn){
   grid.forEach(function(b){b.style.background='';b.style.borderColor='';b.style.color='';});
   btn.style.background=colors[val]||'#000';btn.style.borderColor=colors[val]||'#000';btn.style.color='#FFF';
   if(type==='type')travelType=val;else travelLuggage=val;checkTravelReady();
+}
+var travelVoiceRec=null;
+function startTravelVoice(){
+  var btn=document.getElementById('mic-travel-voice');
+  var statusEl=document.getElementById('travel-voice-status');
+  var SpeechRec=getSpeechRecognition();
+  if(!SpeechRec){if(statusEl)statusEl.textContent='Voice not supported on this browser.';return;}
+  if(travelVoiceRec){try{travelVoiceRec.stop();}catch(e){}travelVoiceRec=null;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}return;}
+  if(btn){btn.style.background='#8B1A30';btn.innerHTML='&#9632;';}
+  if(statusEl)statusEl.textContent='Listening... tap to stop.';
+  travelVoiceRec=new SpeechRec();
+  travelVoiceRec.continuous=true;travelVoiceRec.interimResults=false;travelVoiceRec.lang='en-US';
+  var transcript='';
+  travelVoiceRec.onresult=function(e){for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)transcript+=e.results[i][0].transcript+' ';}};
+  travelVoiceRec.onerror=function(e){if(statusEl)statusEl.textContent='Mic error: '+e.error;if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}travelVoiceRec=null;};
+  travelVoiceRec.onend=function(){
+    if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
+    travelVoiceRec=null;
+    if(!transcript.trim()){if(statusEl)statusEl.textContent='Nothing heard. Try again.';return;}
+    if(statusEl)statusEl.textContent='Parsing your trip...';
+    parseTravelVoice(transcript.trim());
+  };
+  travelVoiceRec.start();
+}
+async function parseTravelVoice(transcript){
+  var statusEl=document.getElementById('travel-voice-status');
+  var today=new Date();
+  var todayStr=today.toISOString().split('T')[0];
+  var year=today.getFullYear();
+  try{
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:300,system:'Extract trip details from speech. Today is '+todayStr+'. Respond ONLY in JSON, no markdown:\n{"destination":"city name or empty","dateFrom":"YYYY-MM-DD or empty","dateTo":"YYYY-MM-DD or empty","tripType":"Tourism|Work|Work + Tourism|Event / Wedding|empty","luggage":"Hand luggage only|Carry-on|Checked bag|No limit|empty","extra":"any other details mentioned"}',messages:[{role:'user',content:transcript}]})});
+    var data=await res.json();
+    var raw=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
+    var parsed=JSON.parse(raw);
+    if(parsed.destination){document.getElementById('travel-destination').value=parsed.destination;}
+    if(parsed.dateFrom){document.getElementById('travel-date-from').value=parsed.dateFrom;}
+    if(parsed.dateTo){document.getElementById('travel-date-to').value=parsed.dateTo;}
+    if(parsed.extra){document.getElementById('travel-extra').value=parsed.extra;}
+    if(parsed.tripType&&parsed.tripType!=='empty'){
+      var typeMap={'Tourism':'ttype-tourism','Work':'ttype-work','Work + Tourism':'ttype-mixed','Event / Wedding':'ttype-event'};
+      var btnId=typeMap[parsed.tripType];
+      if(btnId){var tb=document.getElementById(btnId);if(tb)selectTravelTag('type',parsed.tripType,tb);}
+    }
+    if(parsed.luggage&&parsed.luggage!=='empty'){
+      var lugMap={'Hand luggage only':'tlug-hand','Carry-on':'tlug-carry','Checked bag':'tlug-checked','No limit':'tlug-any'};
+      var lbtnId=lugMap[parsed.luggage];
+      if(lbtnId){var lb=document.getElementById(lbtnId);if(lb)selectTravelTag('luggage',parsed.luggage,lb);}
+    }
+    if(statusEl)statusEl.textContent='Got it! Review and adjust if needed.';
+    checkTravelReady();
+  }catch(err){if(statusEl)statusEl.textContent='Could not parse. Please fill in the fields manually.';}
 }
 function checkTravelReady(){
   var dest=document.getElementById('travel-destination').value.trim();
