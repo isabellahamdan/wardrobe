@@ -301,7 +301,7 @@ button{cursor:pointer}
 
       <div id="stylist-voice" style="display:none">
         <div class="voice-listening" id="voice-listening-state">
-          <div class="voice-mic-big" id="voice-mic-big-btn" onclick="handleVoiceMicTap()">&#127897;</div>
+          <div class="voice-mic-big" id="voice-mic-big-btn" onclick="handleVoiceMicTap()" ontouchstart="event.preventDefault();handleVoiceMicTap()">&#127897;</div>
           <div class="voice-listening-label" id="voice-listening-label">Tap to speak</div>
           <div style="text-align:left;margin:20px 0 0;padding:18px 20px;background:#f5f5f5;border-left:3px solid #6B2D3E;">
             <div style="font-size:11px;letter-spacing:0.3em;color:#6B2D3E;text-transform:uppercase;font-weight:700;margin-bottom:14px">You can say things like</div>
@@ -311,7 +311,7 @@ button{cursor:pointer}
             <div style="font-size:15px;color:#444;line-height:1.5"><span style="font-size:10px;letter-spacing:0.2em;color:#999;text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px">Mix it all</span>&#8220;Night out, warm weather, show arms, lean into my animal print rules&#8221;</div>
           </div>
           <div class="voice-listening-transcript" id="voice-transcript-live" style="margin-top:16px"></div>
-          <button class="voice-stop-btn" id="voice-done-btn" onclick="stopVoiceListening()" style="display:none">Done &#8594;</button>
+          <button class="voice-stop-btn" id="voice-done-btn" onclick="stopVoiceListening()" ontouchstart="event.preventDefault();stopVoiceListening()" style="display:none">Done &#8594;</button>
         </div>
         <div id="voice-understanding-state" style="display:none">
           <div class="voice-understanding">
@@ -352,7 +352,7 @@ button{cursor:pointer}
           <div class="section-label">Tell me more</div>
           <div class="textarea-with-mic">
             <textarea class="context-textarea" id="extra-context" rows="4" placeholder="e.g. Important meeting... want to wear boots... feel like showing arms..."></textarea>
-            <button class="mic-btn-inline" id="mic-scratch" onclick="toggleMicForTextarea('extra-context','mic-scratch','mic-status-scratch')" title="Tap to speak">&#127897;</button>
+            <button class="mic-btn-inline" id="mic-scratch" onclick="toggleMicForTextarea('extra-context','mic-scratch','mic-status-scratch')" ontouchstart="event.preventDefault();toggleMicForTextarea('extra-context','mic-scratch','mic-status-scratch')" title="Tap to speak">&#127897;</button>
           </div>
           <div class="voice-status" id="mic-status-scratch"></div>
         </div>
@@ -401,7 +401,7 @@ button{cursor:pointer}
           <div class="section-label">Tell me more</div>
           <div class="textarea-with-mic">
             <textarea class="context-textarea" id="extra-context-piece" rows="3" placeholder="e.g. Important meeting... feel like showing arms..."></textarea>
-            <button class="mic-btn-inline" id="mic-piece" onclick="toggleMicForTextarea('extra-context-piece','mic-piece','mic-status-piece')" title="Tap to speak">&#127897;</button>
+            <button class="mic-btn-inline" id="mic-piece" onclick="toggleMicForTextarea('extra-context-piece','mic-piece','mic-status-piece')" ontouchstart="event.preventDefault();toggleMicForTextarea('extra-context-piece','mic-piece','mic-status-piece')" title="Tap to speak">&#127897;</button>
           </div>
           <div class="voice-status" id="mic-status-piece"></div>
         </div>
@@ -429,7 +429,7 @@ button{cursor:pointer}
           <div class="voice-feedback-desc">Speak or type &mdash; what worked, what didn&rsquo;t. The more detail, the smarter I get.</div>
           <div class="voice-feedback-row">
             <textarea class="voice-feedback-textarea" id="stylist-feedback-text" rows="3" placeholder="e.g. Love the shoes but the shirt is too casual for tonight..."></textarea>
-            <button class="mic-btn-voice" id="mic-stylist-fb" onclick="toggleMicForFeedback('stylist-feedback-text','mic-stylist-fb','stylist-fb-status')">&#127897;</button>
+            <button class="mic-btn-voice" id="mic-stylist-fb" onclick="toggleMicForFeedback('stylist-feedback-text','mic-stylist-fb','stylist-fb-status')" ontouchstart="event.preventDefault();toggleMicForFeedback('stylist-feedback-text','mic-stylist-fb','stylist-fb-status')">&#127897;</button>
           </div>
           <div class="voice-status" id="stylist-fb-status"></div>
           <button class="voice-feedback-save" onclick="saveStyleFeedbackNote()">Save feedback</button>
@@ -486,7 +486,7 @@ button{cursor:pointer}
       <div id="archive-search-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;border-bottom:2px solid #000;padding-bottom:10px">
         <span style="font-size:18px">&#128269;</span>
         <input id="archive-search-input" type="text" placeholder="Search by name, colour, material..." autocomplete="off" style="flex:1;border:none;font-size:15px;font-family:'Cormorant Garamond',Georgia,serif;background:transparent;outline:none;color:#000" oninput="onArchiveSearch(this.value)">
-        <button id="archive-search-mic" onclick="toggleMicForSearch('archive-search-input','archive-search-mic',onArchiveSearch)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 2px;transition:transform 0.1s">&#127908;</button>
+        <button id="archive-search-mic" onclick="toggleMicForSearch('archive-search-input','archive-search-mic',onArchiveSearch)" ontouchstart="event.preventDefault();toggleMicForSearch('archive-search-input','archive-search-mic',onArchiveSearch)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 2px;transition:transform 0.1s">&#127908;</button>
         <button id="archive-search-clear" onclick="clearArchiveSearch()" style="display:none;background:none;border:none;font-size:18px;color:#999;cursor:pointer;padding:0 4px">&#10005;</button>
       </div>
       <div id="wardrobe-gallery">
@@ -743,7 +743,7 @@ button{cursor:pointer}
           <div class="voice-feedback-desc">Tell me what works and what doesn&rsquo;t &#8212; which days, which pieces, anything. This feeds directly into every future suggestion.</div>
           <div class="voice-feedback-row">
             <textarea class="voice-feedback-textarea" id="travel-feedback-text" rows="4" placeholder="e.g. Day 3 looks great. Day 1 is too casual. Avoid black in hot weather for me..."></textarea>
-            <button class="mic-btn-voice" id="mic-travel-fb" onclick="toggleMicForFeedback('travel-feedback-text','mic-travel-fb','travel-fb-status')">&#127897;</button>
+            <button class="mic-btn-voice" id="mic-travel-fb" onclick="toggleMicForFeedback('travel-feedback-text','mic-travel-fb','travel-fb-status')" ontouchstart="event.preventDefault();toggleMicForFeedback('travel-feedback-text','mic-travel-fb','travel-fb-status')">&#127897;</button>
           </div>
           <div class="voice-status" id="travel-fb-status"></div>
           <button class="voice-feedback-save" onclick="saveTravelFeedback()">Save feedback</button>
@@ -847,6 +847,7 @@ function getSpeechRecognition(){return window.SpeechRecognition||window.webkitSp
 
 function toggleMicForTextarea(textareaId,btnId,statusId){
   if(voiceRecognitionActive&&activeMicBtnId===btnId){stopMicForTextarea();return;}
+  if(voiceRecognitionActive){stopMicForTextarea();}
   killAllMics();
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
@@ -857,26 +858,29 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
   var accumulated='';
   function doStart(){
     if(!voiceRecognitionActive)return;
-    var rec=new SpeechRec();
-    voiceRecognition=rec;_activeMicInstance=rec;
-    rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
-    rec.onresult=function(event){
-      var interim='';
-      for(var i=event.resultIndex;i<event.results.length;i++){
-        if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
-        else interim+=event.results[i][0].transcript;
-      }
-      var ta=document.getElementById(textareaId);if(ta)ta.value=(accumulated+(interim||'')).trim();
-      if(statusEl)statusEl.textContent='Listening... '+((accumulated+interim).length)+' chars';
-    };
-    rec.onerror=function(e){
-      if(e.error==='aborted'||e.error==='no-speech'){if(voiceRecognitionActive)setTimeout(doStart,300);return;}
-      if(e.error==='audio-capture'&&voiceRecognitionActive){setTimeout(doStart,800);return;}
-      if(statusEl)statusEl.textContent='Mic error: '+e.error;
-      stopMicForTextarea();
-    };
-    rec.onend=function(){if(voiceRecognitionActive)setTimeout(doStart,300);};
-    try{rec.start();}catch(ex){if(voiceRecognitionActive)setTimeout(doStart,500);}
+    if(voiceRecognition){try{voiceRecognition.abort();}catch(e){}voiceRecognition=null;}
+    setTimeout(function(){
+      if(!voiceRecognitionActive)return;
+      var rec=new SpeechRec();
+      voiceRecognition=rec;_activeMicInstance=rec;
+      rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
+      rec.onresult=function(event){
+        var interim='';
+        for(var i=event.resultIndex;i<event.results.length;i++){
+          if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
+          else interim+=event.results[i][0].transcript;
+        }
+        var ta=document.getElementById(textareaId);if(ta)ta.value=(accumulated+(interim||'')).trim();
+        if(statusEl)statusEl.textContent='Listening... tap mic to stop.';
+      };
+      rec.onerror=function(e){
+        if(e.error==='aborted'||e.error==='no-speech'){if(voiceRecognitionActive)setTimeout(doStart,350);return;}
+        if(statusEl)statusEl.textContent='Mic error: '+e.error;
+        stopMicForTextarea();
+      };
+      rec.onend=function(){if(voiceRecognitionActive)setTimeout(doStart,350);};
+      try{rec.start();}catch(ex){if(voiceRecognitionActive)setTimeout(doStart,600);}
+    },200);
   }
   setTimeout(doStart,400);
 }
@@ -905,31 +909,37 @@ function toggleMicForSearch(inputId,btnId,onResultFn){
   var btn=document.getElementById(btnId);
   if(btn){btn.classList.add('recording');btn.textContent='\u23F9';}
   setTimeout(function(){
-    searchMicRecognition=new SpeechRec();_activeMicInstance=searchMicRecognition;
-    searchMicRecognition.continuous=false;
-    searchMicRecognition.interimResults=true;
-    searchMicRecognition.lang='en-US';
-    var final='';
-    searchMicRecognition.onresult=function(event){
-      var interim='';
-      for(var i=event.resultIndex;i<event.results.length;i++){
-        if(event.results[i].isFinal)final+=event.results[i][0].transcript;
-        else interim+=event.results[i][0].transcript;
-      }
-      var inp=document.getElementById(inputId);
-      if(inp){inp.value=final||interim;onResultFn(inp.value);}
-    };
-    searchMicRecognition.onerror=function(e){if(e.error!=='aborted'&&e.error!=='no-speech'){var b2=document.getElementById(btnId);if(b2){b2.classList.remove('recording');b2.textContent='\uD83C\uDFA4';}searchMicActive=false;}};
-    searchMicRecognition.onend=function(){
-      searchMicActive=false;
-      var b3=document.getElementById(btnId);if(b3){b3.classList.remove('recording');b3.textContent='\uD83C\uDFA4';}
-    };
-    searchMicRecognition.start();
+    if(!searchMicActive)return;
+    if(searchMicRecognition){try{searchMicRecognition.abort();}catch(e){}searchMicRecognition=null;}
+    setTimeout(function(){
+      if(!searchMicActive)return;
+      searchMicRecognition=new SpeechRec();_activeMicInstance=searchMicRecognition;
+      searchMicRecognition.continuous=false;
+      searchMicRecognition.interimResults=true;
+      searchMicRecognition.lang='en-US';
+      var final='';
+      searchMicRecognition.onresult=function(event){
+        var interim='';
+        for(var i=event.resultIndex;i<event.results.length;i++){
+          if(event.results[i].isFinal)final+=event.results[i][0].transcript;
+          else interim+=event.results[i][0].transcript;
+        }
+        var inp=document.getElementById(inputId);
+        if(inp){inp.value=final||interim;onResultFn(inp.value);}
+      };
+      searchMicRecognition.onerror=function(e){if(e.error!=='aborted'&&e.error!=='no-speech'){var b2=document.getElementById(btnId);if(b2){b2.classList.remove('recording');b2.textContent='\uD83C\uDFA4';}searchMicActive=false;searchMicRecognition=null;}};
+      searchMicRecognition.onend=function(){
+        searchMicActive=false;searchMicRecognition=null;
+        var b3=document.getElementById(btnId);if(b3){b3.classList.remove('recording');b3.textContent='\uD83C\uDFA4';}
+      };
+      try{searchMicRecognition.start();}catch(ex){searchMicActive=false;var b4=document.getElementById(btnId);if(b4){b4.classList.remove('recording');b4.textContent='\uD83C\uDFA4';}}
+    },200);
   },400);
 }
 
 function toggleMicForFeedback(textareaId,btnId,statusId){
   if(feedbackMicActive&&activeFbBtnId===btnId){stopMicForFeedback();return;}
+  if(feedbackMicActive){stopMicForFeedback();}
   killAllMics();
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){var s=document.getElementById(statusId);if(s)s.textContent='Voice not supported on this browser.';return;}
@@ -940,26 +950,29 @@ function toggleMicForFeedback(textareaId,btnId,statusId){
   var accumulated='';
   function doStartFb(){
     if(!feedbackMicActive)return;
-    var rec=new SpeechRec();
-    feedbackMicRecognition=rec;_activeMicInstance=rec;
-    rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
-    rec.onresult=function(event){
-      var interim='';
-      for(var i=event.resultIndex;i<event.results.length;i++){
-        if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
-        else interim+=event.results[i][0].transcript;
-      }
-      var ta=document.getElementById(textareaId);if(ta)ta.value=(accumulated+(interim||'')).trim();
-      if(statusEl)statusEl.textContent='Listening... tap mic to stop';
-    };
-    rec.onerror=function(e){
-      if(e.error==='aborted'||e.error==='no-speech'){if(feedbackMicActive)setTimeout(doStartFb,300);return;}
-      if(e.error==='audio-capture'&&feedbackMicActive){setTimeout(doStartFb,800);return;}
-      if(statusEl)statusEl.textContent='Mic error: '+e.error;
-      stopMicForFeedback();
-    };
-    rec.onend=function(){if(feedbackMicActive)setTimeout(doStartFb,300);};
-    try{rec.start();}catch(ex){if(feedbackMicActive)setTimeout(doStartFb,500);}
+    if(feedbackMicRecognition){try{feedbackMicRecognition.abort();}catch(e){}feedbackMicRecognition=null;}
+    setTimeout(function(){
+      if(!feedbackMicActive)return;
+      var rec=new SpeechRec();
+      feedbackMicRecognition=rec;_activeMicInstance=rec;
+      rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
+      rec.onresult=function(event){
+        var interim='';
+        for(var i=event.resultIndex;i<event.results.length;i++){
+          if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
+          else interim+=event.results[i][0].transcript;
+        }
+        var ta=document.getElementById(textareaId);if(ta)ta.value=(accumulated+(interim||'')).trim();
+        if(statusEl)statusEl.textContent='Listening... tap mic to stop';
+      };
+      rec.onerror=function(e){
+        if(e.error==='aborted'||e.error==='no-speech'){if(feedbackMicActive)setTimeout(doStartFb,350);return;}
+        if(statusEl)statusEl.textContent='Mic error: '+e.error;
+        stopMicForFeedback();
+      };
+      rec.onend=function(){if(feedbackMicActive)setTimeout(doStartFb,350);};
+      try{rec.start();}catch(ex){if(feedbackMicActive)setTimeout(doStartFb,600);}
+    },200);
   }
   setTimeout(doStartFb,400);
 }
@@ -1017,45 +1030,43 @@ function startVoiceListening(){
     var accumulated='';
     function startSession(){
       if(!voiceModeActive)return;
-      var rec=new SpeechRec();
-      voiceModeRecognition=rec;_activeMicInstance=rec;
-      rec.continuous=false;
-      rec.interimResults=true;
-      rec.lang='en-US';
-      rec.onresult=function(event){
-        var interim='';
-        for(var i=event.resultIndex;i<event.results.length;i++){
-          if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
-          else interim+=event.results[i][0].transcript;
-        }
-        voiceModeTranscript=(accumulated+(interim||'')).trim();
-        document.getElementById('voice-transcript-live').textContent=voiceModeTranscript;
-      };
-      rec.onerror=function(e){
-        if(e.error==='aborted'||e.error==='no-speech'){
-          if(voiceModeActive)setTimeout(startSession,300);
-          return;
-        }
-        if(e.error==='audio-capture'&&voiceModeActive){
-          // iOS hasn't released audio yet — retry after longer delay
-          if(lbl)lbl.textContent='Starting mic...';
-          setTimeout(startSession,800);
-          return;
-        }
-        voiceModeActive=false;
-        if(micBtn)micBtn.style.animation='';
-        if(lbl)lbl.textContent='Tap the mic to start';
-        document.getElementById('voice-transcript-live').innerHTML=
-          '<span style="color:#c0392b">Mic error: '+e.error+'. </span>'
-          +'<button onclick="handleVoiceMicTap()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
-      };
-      rec.onend=function(){
-        if(voiceModeActive)setTimeout(startSession,300);
-      };
-      try{rec.start();}catch(ex){if(voiceModeActive)setTimeout(startSession,500);}
+      if(voiceModeRecognition){try{voiceModeRecognition.abort();}catch(e){}voiceModeRecognition=null;}
+      setTimeout(function(){
+        if(!voiceModeActive)return;
+        var rec=new SpeechRec();
+        voiceModeRecognition=rec;_activeMicInstance=rec;
+        rec.continuous=false;
+        rec.interimResults=true;
+        rec.lang='en-US';
+        rec.onresult=function(event){
+          var interim='';
+          for(var i=event.resultIndex;i<event.results.length;i++){
+            if(event.results[i].isFinal)accumulated+=event.results[i][0].transcript+' ';
+            else interim+=event.results[i][0].transcript;
+          }
+          voiceModeTranscript=(accumulated+(interim||'')).trim();
+          document.getElementById('voice-transcript-live').textContent=voiceModeTranscript;
+        };
+        rec.onerror=function(e){
+          if(e.error==='aborted'||e.error==='no-speech'){
+            if(voiceModeActive)setTimeout(startSession,350);
+            return;
+          }
+          voiceModeActive=false;
+          if(micBtn)micBtn.style.animation='';
+          if(lbl)lbl.textContent='Tap the mic to start';
+          document.getElementById('voice-transcript-live').innerHTML=
+            '<span style="color:#c0392b">Mic error: '+e.error+'. </span>'
+            +'<button onclick="handleVoiceMicTap()" style="background:#000;color:#fff;border:none;padding:8px 16px;font-family:inherit;font-size:14px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;margin-top:8px;display:inline-block;">Try again</button>';
+        };
+        rec.onend=function(){
+          if(voiceModeActive)setTimeout(startSession,350);
+        };
+        try{rec.start();}catch(ex){if(voiceModeActive)setTimeout(startSession,600);}
+      },200);
     }
     startSession();
-  },600);
+  },300);
 }
 function stopVoiceListening(){
   voiceModeActive=false;
@@ -1136,7 +1147,7 @@ function renderPiecePicker(){
   var searchBar='<div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid #000;padding-bottom:8px;margin-bottom:12px">'
     +'<span style="font-size:16px">&#128269;</span>'
     +'<input type="text" id="picker-search-input" placeholder="Search pieces..." value="'+(window._pickerSearch||'')+'" oninput="onPickerSearch(this.value)" style="flex:1;border:none;font-size:14px;font-family:\'Cormorant Garamond\',Georgia,serif;background:transparent;outline:none;color:#000">'
-    +'<button id="picker-search-mic" onclick="toggleMicForSearch(\'picker-search-input\',\'picker-search-mic\',onPickerSearch)" style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px">&#127908;</button>'
+    +'<button id="picker-search-mic" onclick="toggleMicForSearch(\'picker-search-input\',\'picker-search-mic\',onPickerSearch)" ontouchstart="event.preventDefault();toggleMicForSearch(\'picker-search-input\',\'picker-search-mic\',onPickerSearch)" style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px">&#127908;</button>'
     +(search?'<button onclick="clearPickerSearch()" style="background:none;border:none;font-size:16px;color:#999;cursor:pointer">&#10005;</button>':'')
     +'</div>';
   var pieceCards=filtered.map(function(p){var pName=(p.description?p.description.split(' | ')[0]:'')||'Piece';return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)"><img class="piece-picker-img" id="pickerimg-'+p.id+'" src="" style="background:#f0f0f0"><div class="piece-picker-name">'+pName+'</div><div class="piece-picker-check">&#10003;</div></div>';}).join('');
@@ -1247,31 +1258,8 @@ async function _doCompose(extra,anchorPiece){
   }).join('\n');
   var looksList=looks.map(function(o){var parsed=null;try{parsed=JSON.parse(o.description);}catch(e){}if(parsed&&parsed.pieces){var vp=parsed.pieces.filter(function(p){return p.description&&p.description.length>3&&p.description!=='only if visible';});return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+'\n'+vp.map(function(p){return '  -> '+p.category+' [WARDROBE_ID:'+o.id+']: '+p.description;}).join('\n');}return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(o.description||'outfit');}).join('\n');
   var anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') - build the entire outfit around this.':'';
-  // Count pieces per category to tell AI what's available
-  var styleCatCounts={top:0,bottom:0,shoes:0,outerwear:0,dress:0};
-  pieces.forEach(function(p){
-    var d=(p.description||'').toLowerCase();
-    var cat=d.split(' | ')[1]||'';
-    if(cat.indexOf('top')>=0)styleCatCounts.top++;
-    else if(cat.indexOf('bottom')>=0)styleCatCounts.bottom++;
-    else if(cat.indexOf('shoes')>=0)styleCatCounts.shoes++;
-    else if(cat.indexOf('outerwear')>=0)styleCatCounts.outerwear++;
-    else if(cat.indexOf('dress')>=0)styleCatCounts.dress++;
-  });
-  var archiveInstruction=archiveOnlyState
-    ?'ARCHIVE ONLY MODE: You MUST use WARDROBE_IDs from the list below for every piece. wardrobeId MUST be a real ID — never null or omitted.\nArchive has: '+styleCatCounts.top+' tops, '+styleCatCounts.bottom+' bottoms, '+styleCatCounts.shoes+' shoes, '+styleCatCounts.dress+' dresses, '+styleCatCounts.outerwear+' outerwear.\nFor bottoms: she has '+styleCatCounts.bottom+' bottoms — pick one by WARDROBE_ID. A null wardrobeId for Bottom is an error in archive-only mode.'
-    :'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
-  var wardrobeIdRequired=archiveOnlyState?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var wardrobeIdOptional='"wardrobeId":"ID or null"';
-  // Per-category: require ID only if archive has 10+ pieces of that type
-  var bottomIdNote=(archiveOnlyState&&styleCatCounts.bottom>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var shoesIdNote=(archiveOnlyState&&styleCatCounts.shoes>=10)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var outerwearIdNote=(archiveOnlyState&&styleCatCounts.outerwear>=10)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var topIdNote=(archiveOnlyState&&styleCatCounts.top>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var dressIdNote=(archiveOnlyState&&styleCatCounts.dress>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var pieceExample='{"category":"Top","name":"description",'+topIdNote+'},{"category":"Bottom","name":"description",'+bottomIdNote+'},{"category":"Shoes","name":"description",'+shoesIdNote+'},{"category":"Outerwear","name":"description",'+outerwearIdNote+'},{"category":"Accessories","name":"description",'+wardrobeIdOptional+'}';
-  var archiveOnlyNote=archiveOnlyState?('\nArchive counts: tops='+styleCatCounts.top+', bottoms='+styleCatCounts.bottom+', shoes='+styleCatCounts.shoes+', dresses='+styleCatCounts.dress+', outerwear='+styleCatCounts.outerwear+'.\nFor any category with 10+ pieces: wardrobeId MUST be a real ID. For categories with fewer than 10 pieces: describe vividly, wardrobeId can be null.'):'';
-  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+archiveOnlyNote+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit empty slots.\n5) Archive first. Categories with 10+ pieces MUST use real wardrobeIds.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom".\n7) Feel free to suggest a dress as a standalone look.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":['+pieceExample+'],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
+  var archiveInstruction=archiveOnlyState?'ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.':'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
+  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit only truly inapplicable slots (e.g. outerwear in summer, accessories if none fit). NEVER omit Top, Bottom, or Shoes — these are mandatory for every look unless it uses a Dress.\n5) Archive first.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom". A dress replaces both top and bottom. Do NOT pair a dress with a separate top.\n7) Feel free to suggest a dress as a standalone look — dress + shoes + accessories only.\n8) If a Bottom is not in her archive, describe one vividly (e.g. "Navy wide-leg trousers") and set wardrobeId to null. A bottom MUST always be present unless the look uses a Dress.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional","wardrobeId":"ID or null"}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
@@ -1319,7 +1307,7 @@ function renderOption(idx){
   var uniqueIds=usedIds.filter(function(id,i){return usedIds.indexOf(id)===i;});
   var heroLook=uniqueIds.length===1?allOutfits.find(function(o){return o.id===uniqueIds[0]&&o.photo_type!=='Individual Piece';}):null;
   var heroHtml=heroLook?'<div style="position:relative;margin-bottom:20px"><img src="'+(heroLook.image_data||heroLook.image_url)+'" style="width:100%;max-height:420px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;top:0;left:0;padding:6px 10px;background:rgba(0,0,0,0.75)"><span style="font-size:9px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;font-weight:700">From your archive</span></div></div>':'';
-  var skipNames=['none','n/a','not needed','skip',''];
+  var skipNames=['none','n/a','not needed','skip'];
   var piecesHtml=(opt.pieces||[]).filter(function(p){return p.name&&p.name.trim()&&skipNames.indexOf(p.name.toLowerCase().trim())<0;}).map(function(p,pi){
     var matched=p.wardrobeId?allOutfits.find(function(o){return o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim();}):null;
     var imgSrc=matched?(matched.image_data||matched.image_url):null;
@@ -2045,67 +2033,69 @@ function selectTravelTag(type,val,btn){
   btn.style.background=colors[val]||'#000';btn.style.borderColor=colors[val]||'#000';btn.style.color='#FFF';
   if(type==='type')travelType=val;else travelLuggage=val;checkTravelReady();
 }
-var travelVoiceRec=null;var travelVoiceActive=false;var travelVoiceAccumulated='';
+var travelVoiceRec=null;var travelVoiceActive=false;
 function startTravelVoice(){
   var btn=document.getElementById('mic-travel-voice');
   var statusEl=document.getElementById('travel-voice-status');
   var SpeechRec=getSpeechRecognition();
   if(!SpeechRec){if(statusEl)statusEl.textContent='Voice not supported on this browser.';return;}
   if(travelVoiceActive){
-    // Manual stop — parse whatever we have
     travelVoiceActive=false;
     if(travelVoiceRec){try{travelVoiceRec.stop();}catch(e){}travelVoiceRec=null;}
     if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
-    var best=travelVoiceAccumulated.trim();
-    if(best){
-      if(statusEl)statusEl.textContent='Parsing your trip...';
-      parseTravelVoice(best);
-    }
     return;
   }
   killAllMics();
   travelVoiceActive=true;
-  travelVoiceAccumulated='';
   if(btn){btn.style.background='#8B1A30';btn.innerHTML='&#9632;';}
-  if(statusEl)statusEl.textContent='Starting mic...';
+  if(statusEl)statusEl.textContent='Listening... tap to stop when done.';
+  var accumulated='';
   setTimeout(function(){
-    if(statusEl)statusEl.textContent='Listening... tap to stop when done.';
     function startSession(){
       if(!travelVoiceActive)return;
-      var rec=new SpeechRec();
-      travelVoiceRec=rec;_activeMicInstance=rec;
-      rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
-      rec.onresult=function(e){
-        var interim='';
-        for(var i=e.resultIndex;i<e.results.length;i++){
-          if(e.results[i].isFinal)travelVoiceAccumulated+=e.results[i][0].transcript+' ';
-          else interim+=e.results[i][0].transcript;
-        }
-        // Use interim as live fallback in case isFinal never fires
-        var display=(travelVoiceAccumulated+(interim||'')).trim();
-        if(statusEl)statusEl.textContent='Heard: '+display;
-      };
-      rec.onerror=function(e){
-        if(e.error==='aborted'||e.error==='no-speech'){
-          if(travelVoiceActive)setTimeout(startSession,300);
-          return;
-        }
-        travelVoiceActive=false;
-        if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
-        if(statusEl)statusEl.textContent='Mic error: '+e.error+'. Tap to try again.';
-        travelVoiceRec=null;
-      };
-      rec.onend=function(){
-        if(travelVoiceActive){
-          // Natural end of short session — restart
-          setTimeout(startSession,300);
-        }
-        // Manual stop is handled in startTravelVoice directly
-      };
-      try{rec.start();}catch(ex){if(travelVoiceActive)setTimeout(startSession,500);}
+      if(travelVoiceRec){try{travelVoiceRec.abort();}catch(e){}travelVoiceRec=null;}
+      setTimeout(function(){
+        if(!travelVoiceActive)return;
+        var rec=new SpeechRec();
+        travelVoiceRec=rec;_activeMicInstance=rec;
+        rec.continuous=false;
+        rec.interimResults=true;
+        rec.lang='en-US';
+        rec.onresult=function(e){
+          var interim='';
+          for(var i=e.resultIndex;i<e.results.length;i++){
+            if(e.results[i].isFinal)accumulated+=e.results[i][0].transcript+' ';
+            else interim+=e.results[i][0].transcript;
+          }
+          if(statusEl)statusEl.textContent='Heard: '+(accumulated+(interim||'')).trim();
+        };
+        rec.onerror=function(e){
+          if(e.error==='aborted'||e.error==='no-speech'){
+            if(travelVoiceActive)setTimeout(startSession,350);
+            return;
+          }
+          travelVoiceActive=false;
+          if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
+          if(statusEl)statusEl.textContent='Mic error: '+e.error+'. Tap to try again.';
+          travelVoiceRec=null;
+        };
+        rec.onend=function(){
+          if(travelVoiceActive){
+            setTimeout(startSession,350);
+          } else {
+            travelVoiceRec=null;
+            if(btn){btn.style.background='#6B2D3E';btn.innerHTML='&#127897;';}
+            var best=accumulated.trim();
+            if(!best){if(statusEl)statusEl.textContent='Nothing heard. Tap mic and speak.';return;}
+            if(statusEl)statusEl.textContent='Parsing your trip...';
+            parseTravelVoice(best);
+          }
+        };
+        try{rec.start();}catch(ex){if(travelVoiceActive)setTimeout(startSession,600);}
+      },200);
     }
     startSession();
-  },600);
+  },300);
 }
 async function parseTravelVoice(transcript){
   var statusEl=document.getElementById('travel-voice-status');
@@ -2183,9 +2173,9 @@ async function planTravel(){
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
   var textTips=(inspoResp.data||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
   var tipsStr=textTips.map(function(i){return '- '+(i.ai_summary||(i.text_content||'').split('\n')[0]);}).filter(Boolean).slice(0,15).join('\n');
-  var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(60);
+  var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(40);
   var fbNotes=(fbResp.data||[]).filter(function(f){return f.feedback==='note'||f.feedback==='dislike';});
-  var fbContext=fbNotes.length>0?'\n\nHER FEEDBACK & PREFERENCES (MANDATORY - read carefully):\n'+fbNotes.slice(0,20).map(function(f){return '- '+(f.reason||f.piece_name)+(f.weather?' [weather: '+f.weather+']':'');}).join('\n'):'';
+  var fbContext=fbNotes.length>0?'\n\nHER FEEDBACK & PREFERENCES:\n'+fbNotes.slice(0,10).map(function(f){return '- '+(f.reason||f.piece_name);}).join('\n'):'';
   // Pre-filter pieces by weather relevance — send everything that's relevant, skip clearly wrong-season items
   var weatherProfile=weather?weather.weatherProfile.toLowerCase():'';
   var isWarm=weatherProfile.indexOf('warm')>=0||weatherProfile.indexOf('hot')>=0;
@@ -2226,11 +2216,7 @@ async function planTravel(){
   } else {
     travelArchiveInstruction='Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
   }
-  var travelTopId=(travelArchiveOnly&&catCounts.top>=1)?'"wardrobeId":"REQUIRED real ID"':'"wardrobeId":"ID or null"';
-  var travelBotId=(travelArchiveOnly&&catCounts.bottom>=1)?'"wardrobeId":"REQUIRED real ID"':'"wardrobeId":"ID or null"';
-  var travelShoesId=(travelArchiveOnly&&catCounts.shoes>=10)?'"wardrobeId":"REQUIRED real ID"':'"wardrobeId":"ID or null"';
-  var travelOutId=(travelArchiveOnly&&catCounts.outerwear>=10)?'"wardrobeId":"REQUIRED real ID"':'"wardrobeId":"ID or null"';
-  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip). She has '+catCounts.bottom+' bottoms in archive — ALWAYS include a bottom for every non-dress day. A missing bottom is an error.\n- [DRESS] pieces are complete outfits — use in "top" slot, leave bottom empty. NEVER put a dress in the bottom slot.\n- Choose pieces appropriate for the actual weather temperature — wool in warm/hot weather is wrong.\n- The "bottom" slot MUST be filled for every day that does not use a dress.\n- VARIETY: Use a wide range of different pieces. Do not repeat the same combinations you may have suggested before.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"",'+travelTopId+'},"bottom":{"name":"",'+travelBotId+'},"shoes":{"name":"",'+travelShoesId+'},"outerwear":{"name":"",'+travelOutId+'},"accessories":{"name":"","wardrobeId":"ID or null"}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
+  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip). She has '+catCounts.bottom+' bottoms in archive — ALWAYS include a bottom for every non-dress day. A missing bottom is an error.\n- [DRESS] pieces are complete outfits — use in "top" slot, leave bottom empty. NEVER put a dress in the bottom slot.\n- Choose pieces appropriate for the actual weather temperature.\n- The "bottom" slot MUST be filled for every day that does not use a dress.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
