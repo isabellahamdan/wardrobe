@@ -731,8 +731,12 @@ button{cursor:pointer}
             <div class="result-meta" id="travel-result-meta"></div>
             <div class="result-title" id="travel-result-title" style="font-size:32px"></div>
           </div>
-          <button onclick="resetTravel()" style="padding:12px 18px;background:transparent;border:1px solid #000;font-size:12px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">New Trip</button>
+          <div style="display:flex;gap:8px;flex-direction:column;align-items:flex-end">
+            <button onclick="saveTripPlan()" style="padding:10px 16px;background:#000;color:#fff;border:none;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">&#9733; Save Trip</button>
+            <button onclick="resetTravel()" style="padding:10px 16px;background:transparent;border:1px solid #000;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">New Trip</button>
+          </div>
         </div>
+        <div id="save-trip-status" style="font-size:13px;color:#4a7a5a;font-style:italic;margin-bottom:12px;min-height:16px"></div>
         <div id="travel-result-content"></div>
         <div class="voice-feedback-box" style="margin-top:32px">
           <div class="voice-feedback-title">Feedback on this trip plan</div>
@@ -744,6 +748,11 @@ button{cursor:pointer}
           <div class="voice-status" id="travel-fb-status"></div>
           <button class="voice-feedback-save" onclick="saveTravelFeedback()">Save feedback</button>
         </div>
+      </div>
+      <!-- Saved Trips -->
+      <div id="saved-trips-section" style="display:none;margin-top:32px">
+        <div class="section-label" style="margin-bottom:16px">Saved Trips</div>
+        <div id="saved-trips-list"></div>
       </div>
     </div>
 
@@ -830,7 +839,7 @@ function switchTab(tab,btn){
   });
   if(tab==='wardrobe')loadGallery();
   if(tab==='inspiration')loadInspiration();
-  if(tab==='travel'){var t=new Date().toISOString().split('T')[0];var df=document.getElementById('travel-date-from');if(df&&!df.value)df.min=t;}
+  if(tab==='travel'){var t=new Date().toISOString().split('T')[0];var df=document.getElementById('travel-date-from');if(df&&!df.value)df.min=t;loadSavedTrips();}
 }
 
 // ── SPEECH RECOGNITION ────────────────────────────────────
@@ -1285,7 +1294,7 @@ function renderOption(idx){
     var imgSrc=matched?(matched.image_data||matched.image_url):null;
     var isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     var safeId=idx+'-'+pi;var safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    var photoHtml=imgSrc?(isFullLookRef?'<div class="piece-photo" style="position:relative;overflow:hidden;"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.72);padding:3px 4px;font-size:8px;letter-spacing:0.08em;color:#fff;text-transform:uppercase;font-weight:700;text-align:center;">'+p.category+' from look</div></div>':'<div class="piece-photo"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>'):'<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>';
+    var photoHtml=imgSrc?(isFullLookRef?'<div class="piece-photo" style="position:relative;overflow:hidden;cursor:zoom-in" onclick="openLightbox(\''+imgSrc.replace(/'/g,'&#39;')+'\',\''+safeName+'\')"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.72);padding:3px 4px;font-size:8px;letter-spacing:0.08em;color:#fff;text-transform:uppercase;font-weight:700;text-align:center;">'+p.category+' from look</div></div>':'<div class="piece-photo" style="cursor:zoom-in" onclick="openLightbox(\''+imgSrc.replace(/'/g,'&#39;')+'\',\''+safeName+'\')"><img src="'+imgSrc+'" style="width:90px;height:112px;object-fit:cover;object-position:top;display:block;"></div>'):'<div class="piece-photo-placeholder"><div class="piece-photo-placeholder-text">Not in archive</div></div>';
     return '<div class="piece-card" id="card-'+safeId+'">'+photoHtml+'<div class="piece-content"><div class="piece-category">'+p.category+(matched?'<span style="font-size:9px;letter-spacing:0.12em;color:#4a7a5a;margin-left:6px;font-weight:700">&#10003; yours</span>':'')+'</div><div class="piece-name">'+p.name+'</div>'+(p.note?'<div class="piece-note">'+p.note+'</div>':'')+'<div class="piece-feedback"><button class="fb-btn" id="fb-'+safeId+'" onclick="showPieceFeedback(\''+safeId+'\',\''+safeName+'\')" style="font-size:11px;letter-spacing:0.2em;padding:6px 12px;">Feedback</button></div><div id="reason-box-'+safeId+'" style="display:none;margin-top:10px"><input type="text" id="reason-input-'+safeId+'" placeholder="Note on this piece in context of the look..." style="width:100%;border:none;border-bottom:1px solid #000;padding:8px 0;font-size:15px;font-family:inherit;color:#000;background:transparent;"><div style="display:flex;gap:8px;margin-top:8px"><button onclick="savePieceFeedback(\''+safeId+'\',\''+safeName+'\')" style="flex:1;padding:10px;background:#000;color:#fff;border:none;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-family:inherit;cursor:pointer;">Save</button><button onclick="hidePieceFeedback(\''+safeId+'\')" style="padding:10px 16px;background:transparent;border:1px solid #e0e0e0;font-size:12px;font-family:inherit;cursor:pointer;">Cancel</button></div></div></div></div>';
   }).join('')||'';
   el.innerHTML=heroHtml+piecesHtml+'<div class="stylist-box"><div style="font-size:16px;color:#444;font-style:italic">'+(opt.stylistNote||'')+'</div><div class="notes-grid"><div><div class="notes-key">Lip</div><div class="notes-val">'+(opt.lip||'')+'</div></div><div><div class="notes-key">Edge</div><div class="notes-val">'+(opt.edge||'')+'</div></div></div></div>';
@@ -2184,7 +2193,7 @@ async function planTravel(){
   } else {
     travelArchiveInstruction='Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
   }
-  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip).\n- [DRESS] pieces are complete outfits — if used, set it in the "top" slot with category Dress and leave bottom empty. NEVER put a dress in the bottom slot.\n- A dress day = dress + shoes + accessories only, no separate top.\n- Choose pieces appropriate for the actual weather temperature.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
+  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip). She has '+catCounts.bottom+' bottoms in archive — ALWAYS include a bottom for every non-dress day. A missing bottom is an error.\n- [DRESS] pieces are complete outfits — use in "top" slot, leave bottom empty. NEVER put a dress in the bottom slot.\n- Choose pieces appropriate for the actual weather temperature.\n- The "bottom" slot MUST be filled for every day that does not use a dress.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
@@ -2211,6 +2220,15 @@ async function planTravel(){
   }catch(e){var errEl=document.getElementById('travel-error');errEl.textContent='Error: '+(e.message||JSON.stringify(e));errEl.style.display='block';btn.disabled=false;btn.textContent='Plan My Wardrobe';}
 }
 function renderTravelResult(result,destination,dateFrom,dateTo,tripDays,weather){
+  // Fix day labels using actual dates
+  if(result.outfits&&dateFrom){
+    var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    result.outfits.forEach(function(day,i){
+      var d=new Date(dateFrom);d.setDate(d.getDate()+i);
+      day.day='Day '+(i+1)+' - '+days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()];
+    });
+  }
   document.getElementById('travel-planner').style.display='none';document.getElementById('travel-result').style.display='block';
   document.getElementById('travel-result-meta').textContent=destination+' \u00B7 '+tripDays+' days'+(travelLuggage?' \u00B7 '+travelLuggage:'');
   document.getElementById('travel-result-title').textContent=result.tripTitle||'Your Trip Wardrobe';
@@ -2355,6 +2373,56 @@ async function regenerateTravelDay(dayIdx){
     result.outfits[dayIdx].outfit=JSON.parse(raw);
     renderTravelResult(result,ctx.destination||'',null,null,ctx.tripDays,ctx.weather);
   }catch(e){redoBtns.forEach(function(b){b.textContent='\u21B5 Redo';b.disabled=false;});}
+}
+function saveTripPlan(){
+  var result=window._lastTravelResult;
+  var ctx=window._travelFeedbackContext||{};
+  if(!result)return;
+  var trip={id:Date.now(),destination:ctx.destination||'Trip',savedAt:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),title:result.tripTitle||ctx.destination||'Trip',tripDays:ctx.tripDays,result:result,ctx:ctx};
+  try{
+    var saved=JSON.parse(localStorage.getItem('wb_savedTrips')||'[]');
+    saved.unshift(trip);
+    if(saved.length>10)saved=saved.slice(0,10);
+    localStorage.setItem('wb_savedTrips',JSON.stringify(saved));
+    var st=document.getElementById('save-trip-status');if(st)st.textContent='Trip saved! View in Saved Trips below.';
+    setTimeout(function(){var s=document.getElementById('save-trip-status');if(s)s.textContent='';},3000);
+  }catch(e){}
+}
+function loadSavedTrips(){
+  try{
+    var saved=JSON.parse(localStorage.getItem('wb_savedTrips')||'[]');
+    var section=document.getElementById('saved-trips-section');
+    var list=document.getElementById('saved-trips-list');
+    if(!saved.length){if(section)section.style.display='none';return;}
+    if(section)section.style.display='block';
+    list.innerHTML=saved.map(function(t){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #f0f0f0">'
+        +'<div><div style="font-size:16px;font-weight:700;color:#000">'+t.title+'</div><div style="font-size:13px;color:#888;margin-top:2px">'+t.destination+' · '+t.tripDays+' days · Saved '+t.savedAt+'</div></div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button onclick="loadSavedTrip('+t.id+')" style="padding:8px 14px;background:#000;color:#fff;border:none;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer">View</button>'
+        +'<button onclick="deleteSavedTrip('+t.id+')" style="padding:8px 12px;background:transparent;border:1px solid #e0e0e0;color:#999;font-size:13px;font-family:inherit;cursor:pointer">&#10005;</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){}
+}
+function deleteSavedTrip(id){
+  try{
+    var saved=JSON.parse(localStorage.getItem('wb_savedTrips')||'[]');
+    saved=saved.filter(function(t){return t.id!==id;});
+    localStorage.setItem('wb_savedTrips',JSON.stringify(saved));
+    loadSavedTrips();
+  }catch(e){}
+}
+function loadSavedTrip(id){
+  try{
+    var saved=JSON.parse(localStorage.getItem('wb_savedTrips')||'[]');
+    var trip=saved.find(function(t){return t.id===id;});
+    if(!trip)return;
+    window._lastTravelResult=trip.result;
+    window._travelFeedbackContext=trip.ctx;
+    var ctx=trip.ctx||{};
+    renderTravelResult(trip.result,trip.destination,null,null,trip.tripDays,ctx.weather);
+  }catch(e){}
 }
 async function saveTravelFeedback(){
   var text=document.getElementById('travel-feedback-text').value.trim();if(!text)return;
