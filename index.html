@@ -1291,7 +1291,15 @@ async function _doCompose(extra,anchorPiece){
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||JSON.stringify(data));
     if(!data.content)throw new Error('No content');
-    currentOptions=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim()).options||[];
+    var rawJson=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
+    console.log('[WARDROBE DEBUG] Raw AI response length:',rawJson.length);
+    console.log('[WARDROBE DEBUG] Raw AI response:',rawJson.slice(0,2000));
+    currentOptions=JSON.parse(rawJson).options||[];
+    console.log('[WARDROBE DEBUG] Parsed options count:',currentOptions.length);
+    if(currentOptions[0]){console.log('[WARDROBE DEBUG] Option 0 pieces:',JSON.stringify(currentOptions[0].pieces));}
+    if(currentOptions[1]){console.log('[WARDROBE DEBUG] Option 1 pieces:',JSON.stringify(currentOptions[1].pieces));}
+    console.log('[WARDROBE DEBUG] _lastOutfits count:',window._lastOutfits?window._lastOutfits.length:0);
+    if(window._lastOutfits&&window._lastOutfits.length>0){console.log('[WARDROBE DEBUG] Sample outfit IDs:',window._lastOutfits.slice(0,5).map(function(o){return o.id+'('+o.photo_type+')';}));}
     var usedIds=[];currentOptions.forEach(function(o){(o.pieces||[]).forEach(function(p){if(p.wardrobeId)usedIds.push(p.wardrobeId);});});
     markUsed(usedIds.filter(function(id,i){return usedIds.indexOf(id)===i;}));
     if(window._composeTimer){clearInterval(window._composeTimer);window._composeTimer=null;}
@@ -1336,6 +1344,7 @@ function renderOption(idx){
   var skipNames=['none','n/a','not needed','skip'];
   var piecesHtml=(opt.pieces||[]).filter(function(p){return p.name&&p.name.trim()&&skipNames.indexOf(p.name.toLowerCase().trim())<0;}).map(function(p,pi){
     var matched=p.wardrobeId?allOutfits.find(function(o){return o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim();}):null;
+    console.log('[WARDROBE DEBUG] piece:',p.category,'wardrobeId:',p.wardrobeId,'matched:',!!matched,'allOutfits len:',allOutfits.length);
     var imgSrc=matched?(matched.image_data||matched.image_url):null;
     var isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     var safeId=idx+'-'+pi;var safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
