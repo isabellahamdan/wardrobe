@@ -871,6 +871,7 @@ function toggleMicForTextarea(textareaId,btnId,statusId){
     };
     rec.onerror=function(e){
       if(e.error==='aborted'||e.error==='no-speech'){if(voiceRecognitionActive)setTimeout(doStart,300);return;}
+      if(e.error==='audio-capture'&&voiceRecognitionActive){setTimeout(doStart,800);return;}
       if(statusEl)statusEl.textContent='Mic error: '+e.error;
       stopMicForTextarea();
     };
@@ -953,6 +954,7 @@ function toggleMicForFeedback(textareaId,btnId,statusId){
     };
     rec.onerror=function(e){
       if(e.error==='aborted'||e.error==='no-speech'){if(feedbackMicActive)setTimeout(doStartFb,300);return;}
+      if(e.error==='audio-capture'&&feedbackMicActive){setTimeout(doStartFb,800);return;}
       if(statusEl)statusEl.textContent='Mic error: '+e.error;
       stopMicForFeedback();
     };
@@ -1034,6 +1036,12 @@ function startVoiceListening(){
           if(voiceModeActive)setTimeout(startSession,300);
           return;
         }
+        if(e.error==='audio-capture'&&voiceModeActive){
+          // iOS hasn't released audio yet — retry after longer delay
+          if(lbl)lbl.textContent='Starting mic...';
+          setTimeout(startSession,800);
+          return;
+        }
         voiceModeActive=false;
         if(micBtn)micBtn.style.animation='';
         if(lbl)lbl.textContent='Tap the mic to start';
@@ -1047,7 +1055,7 @@ function startVoiceListening(){
       try{rec.start();}catch(ex){if(voiceModeActive)setTimeout(startSession,500);}
     }
     startSession();
-  },300);
+  },600);
 }
 function stopVoiceListening(){
   voiceModeActive=false;
@@ -1253,8 +1261,9 @@ async function _doCompose(extra,anchorPiece){
   var archiveInstruction=archiveOnlyState
     ?'ARCHIVE ONLY MODE: You MUST use WARDROBE_IDs from the list below for every piece. wardrobeId MUST be a real ID — never null or omitted.\nArchive has: '+styleCatCounts.top+' tops, '+styleCatCounts.bottom+' bottoms, '+styleCatCounts.shoes+' shoes, '+styleCatCounts.dress+' dresses, '+styleCatCounts.outerwear+' outerwear.\nFor bottoms: she has '+styleCatCounts.bottom+' bottoms — pick one by WARDROBE_ID. A null wardrobeId for Bottom is an error in archive-only mode.'
     :'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
-  var wardrobeIdNote=archiveOnlyState?'"wardrobeId":"REQUIRED - use real ID from archive"':'"wardrobeId":"ID or null"';
-  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit empty slots.\n5) Archive first.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom". A dress replaces both top and bottom. Do NOT pair a dress with a separate top.\n7) Feel free to suggest a dress as a standalone look — dress + shoes + accessories only.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional",'+wardrobeIdNote+'}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
+  var wardrobeIdNote=archiveOnlyState?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
+  var pieceExample='{"category":"Top","name":"description",'+wardrobeIdNote+'},{"category":"Bottom","name":"description",'+wardrobeIdNote+'},{"category":"Shoes","name":"description",'+wardrobeIdNote+'}';
+  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit empty slots.\n5) Archive first. In archive-only mode: wardrobeId MUST be a real ID for EVERY piece — Top, Bottom, Shoes, all of them.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom".\n7) Feel free to suggest a dress as a standalone look.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":['+pieceExample+'],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
