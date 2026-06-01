@@ -2050,8 +2050,9 @@ function startTravelVoice(){
   travelVoiceActive=true;
   travelVoiceAccumulated='';
   if(btn){btn.style.background='#8B1A30';btn.innerHTML='&#9632;';}
-  if(statusEl)statusEl.textContent='Listening... tap to stop when done.';
+  if(statusEl)statusEl.textContent='Starting mic...';
   setTimeout(function(){
+    if(statusEl)statusEl.textContent='Listening... tap to stop when done.';
     function startSession(){
       if(!travelVoiceActive)return;
       var rec=new SpeechRec();
@@ -2087,7 +2088,7 @@ function startTravelVoice(){
       try{rec.start();}catch(ex){if(travelVoiceActive)setTimeout(startSession,500);}
     }
     startSession();
-  },300);
+  },600);
 }
 async function parseTravelVoice(transcript){
   var statusEl=document.getElementById('travel-voice-status');
@@ -2165,9 +2166,9 @@ async function planTravel(){
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
   var textTips=(inspoResp.data||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
   var tipsStr=textTips.map(function(i){return '- '+(i.ai_summary||(i.text_content||'').split('\n')[0]);}).filter(Boolean).slice(0,15).join('\n');
-  var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(40);
+  var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(60);
   var fbNotes=(fbResp.data||[]).filter(function(f){return f.feedback==='note'||f.feedback==='dislike';});
-  var fbContext=fbNotes.length>0?'\n\nHER FEEDBACK & PREFERENCES:\n'+fbNotes.slice(0,10).map(function(f){return '- '+(f.reason||f.piece_name);}).join('\n'):'';
+  var fbContext=fbNotes.length>0?'\n\nHER FEEDBACK & PREFERENCES (MANDATORY - read carefully):\n'+fbNotes.slice(0,20).map(function(f){return '- '+(f.reason||f.piece_name)+(f.weather?' [weather: '+f.weather+']':'');}).join('\n'):'';
   // Pre-filter pieces by weather relevance — send everything that's relevant, skip clearly wrong-season items
   var weatherProfile=weather?weather.weatherProfile.toLowerCase():'';
   var isWarm=weatherProfile.indexOf('warm')>=0||weatherProfile.indexOf('hot')>=0;
@@ -2208,7 +2209,8 @@ async function planTravel(){
   } else {
     travelArchiveInstruction='Prefer her wardrobe items. Reference them by [ID:xxx]. For missing pieces describe vividly.';
   }
-  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip). She has '+catCounts.bottom+' bottoms in archive — ALWAYS include a bottom for every non-dress day. A missing bottom is an error.\n- [DRESS] pieces are complete outfits — use in "top" slot, leave bottom empty. NEVER put a dress in the bottom slot.\n- Choose pieces appropriate for the actual weather temperature.\n- The "bottom" slot MUST be filled for every day that does not use a dress.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":null},"shoes":{"name":"","wardrobeId":null},"outerwear":{"name":"","wardrobeId":null},"accessories":{"name":"","wardrobeId":null}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
+  var travelWardrobeIdNote=travelArchiveOnly?'"wardrobeId":"REQUIRED real ID from archive"':'"wardrobeId":"ID or null"';
+  var prompt='Plan a complete trip wardrobe for Isabella.\n\nDESTINATION: '+destination+'\nDATES: '+dateFrom+' to '+dateTo+' ('+tripDays+' days)\nTRIP TYPE: '+(effectiveTravelType||'Not specified')+'\nLUGGAGE: '+(effectiveTravelLuggage||'Not specified')+'\n'+weatherContext+'\n'+(extra?'SPECIFIC EVENTS: '+extra:'')+'\n\n'+travelArchiveInstruction+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None catalogued yet')+'\n\nHER FULL LOOKS:\n'+(looksList||'None yet')+'\n\n'+(tipsStr?'HER STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+'\n\nCRITICAL RULES:\n- NEVER repeat the same top across multiple days. Each top appears ONCE in the entire trip.\n- Bottoms may repeat (max 2-3 times for a long trip). She has '+catCounts.bottom+' bottoms in archive — ALWAYS include a bottom for every non-dress day. A missing bottom is an error.\n- [DRESS] pieces are complete outfits — use in "top" slot, leave bottom empty. NEVER put a dress in the bottom slot.\n- Choose pieces appropriate for the actual weather temperature — wool in warm/hot weather is wrong.\n- The "bottom" slot MUST be filled for every day that does not use a dress.\n- VARIETY: Use a wide range of different pieces. Do not repeat the same combinations you may have suggested before.\n\nTASK: Day-by-day outfits + packing list. Maximize piece reuse for bottoms/outerwear. Every top is unique.\n\nIMPORTANT: In packingList use clean item names only - NO [ID:xxx] prefixes.\n\nRespond ONLY in JSON:\n{"tripTitle":"evocative name","weatherSummary":"one sentence","packingPhilosophy":"one sentence","outfits":[{"day":"Day 1 - Mon 2 Jun","occasion":"Tourism / Evening dinner","outfit":{"top":{"name":"","wardrobeId":'+travelWardrobeIdNote+'},"bottom":{"name":"",'+travelWardrobeIdNote+'},"shoes":{"name":"",'+travelWardrobeIdNote+'},"outerwear":{"name":"",'+travelWardrobeIdNote+'},"accessories":{"name":"","wardrobeId":"ID or null"}},"stylistNote":""},...],"packingList":{"tops":["clean item name"],"bottoms":["clean item name"],"shoes":["clean item name"],"outerwear":["clean item name"],"accessories":["clean item name"],"extras":["clean item name"]}}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:6000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
