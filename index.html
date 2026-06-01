@@ -1229,14 +1229,23 @@ async function composeLookFromPiece(){
   await _doCompose(extra,selectedPieceData);
 }
 async function _doCompose(extra,anchorPiece){
-  var metaResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(40);
+  // Fetch ALL metadata - limit(40) was causing bottoms to be missing from the prompt
+  var metaResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(300);
   var outfitsMeta=metaResp.data||[];
-  var imgResp=await sb.from('outfits').select('id,image_data').order('created_at',{ascending:false}).limit(40);
-  var imageMap={};(imgResp.data||[]).forEach(function(o){if(o.image_data)imageMap[o.id]=o.image_data;});
+  // Fetch images only for most recent 60 to keep performance reasonable
+  var imgIds=outfitsMeta.slice(0,60).map(function(o){return o.id;});
+  var imageMap={};
+  for(var bi=0;bi<imgIds.length;bi+=20){
+    var imgBatch=imgIds.slice(bi,bi+20);
+    var imgR=await sb.from('outfits').select('id,image_data').in('id',imgBatch);
+    if(imgR.data){imgR.data.forEach(function(row){if(row.image_data)imageMap[row.id]=row.image_data;});}
+  }
   var outfits=outfitsMeta.map(function(o){return Object.assign({},o,{image_data:imageMap[o.id]||null});});
   window._lastOutfits=outfits;
   var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});
   var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
+  // Count bottoms in archive so prompt can handle archive-only mode correctly
+  var bottomCount=pieces.filter(function(p){var d=(p.description||'').toLowerCase();return d.indexOf('| bottom')>=0||d.indexOf('bottom |')>=0;}).length;
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(40);
   var inspoAll=inspoResp.data||[];
   var regularInspo=inspoAll.filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'));});
@@ -1258,8 +1267,12 @@ async function _doCompose(extra,anchorPiece){
   }).join('\n');
   var looksList=looks.map(function(o){var parsed=null;try{parsed=JSON.parse(o.description);}catch(e){}if(parsed&&parsed.pieces){var vp=parsed.pieces.filter(function(p){return p.description&&p.description.length>3&&p.description!=='only if visible';});return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+'\n'+vp.map(function(p){return '  -> '+p.category+' [WARDROBE_ID:'+o.id+']: '+p.description;}).join('\n');}return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(o.description||'outfit');}).join('\n');
   var anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') - build the entire outfit around this.':'';
-  var archiveInstruction=archiveOnlyState?'ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the archive below. No exceptions.':'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
-  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit only truly inapplicable slots (e.g. outerwear in summer, accessories if none fit). NEVER omit Top, Bottom, or Shoes — these are mandatory for every look unless it uses a Dress.\n5) Archive first.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom". A dress replaces both top and bottom. Do NOT pair a dress with a separate top.\n7) Feel free to suggest a dress as a standalone look — dress + shoes + accessories only.\n8) If a Bottom is not in her archive, describe one vividly (e.g. "Navy wide-leg trousers") and set wardrobeId to null. A bottom MUST always be present unless the look uses a Dress.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional","wardrobeId":"ID or null"}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
+  // If archive-only but no bottoms exist, allow describing them
+  var noBottoms=bottomCount===0;
+  var archiveInstruction=archiveOnlyState
+    ?('ARCHIVE ONLY MODE: Every suggested piece MUST reference a WARDROBE_ID from the list below.'+(noBottoms?' EXCEPTION: Archive has NO Bottom pieces — for the Bottom slot, describe a vivid trouser/skirt and set wardrobeId to null.':' Her archive has '+bottomCount+' bottom(s) — always pick one by WARDROBE_ID.'))
+    :'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
+  var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+', bottoms in archive: '+bottomCount+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces (extract each piece from mirror photos). Mix pieces from different looks freely.\n3) Two very different looks.\n4) Top, Bottom, and Shoes are MANDATORY in every look. Only omit truly optional slots (outerwear in summer, accessories if genuinely not applicable).\n5) [DRESS] pieces are COMPLETE OUTFITS — category "Dress", wardrobeId from archive. A dress replaces Top+Bottom. Never pair a dress with a separate top or bottom.\n6) BOTTOM RULE: If archive has bottoms — pick one by WARDROBE_ID. If archive has NO bottoms — describe one vividly and set wardrobeId null. A look WITHOUT a bottom (unless it uses a Dress) is an error.\n7) If archive-only mode and a mandatory slot has no archive match, describe the piece vividly and set wardrobeId null — never omit the slot entirely.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":[{"category":"Top","name":"vivid description","note":"optional","wardrobeId":"ID or null"},{"category":"Bottom","name":"vivid description","note":"optional","wardrobeId":"ID or null"},{"category":"Shoes","name":"vivid description","note":"optional","wardrobeId":"ID or null"}],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
