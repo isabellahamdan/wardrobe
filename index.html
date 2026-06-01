@@ -1229,23 +1229,13 @@ async function composeLookFromPiece(){
   await _doCompose(extra,selectedPieceData);
 }
 async function _doCompose(extra,anchorPiece){
-  // Step 1: metadata only (no image_data) — 300 rows safe, no timeout
+  // Step 1: metadata only (NO image_data) — keeps payload tiny, no timeout
   var metaResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(300);
   var outfitsMeta=metaResp.data||[];
-  // Step 2: images for recent 60 only, batched
-  var recentIds=outfitsMeta.slice(0,60).map(function(o){return o.id;});
-  var imageMap={};
-  var ii=0;
-  while(ii<recentIds.length){
-    var batchIds=recentIds.slice(ii,ii+20);
-    var batchResp=await sb.from('outfits').select('id,image_data').in('id',batchIds);
-    if(batchResp.data){batchResp.data.forEach(function(row){if(row.image_data)imageMap[row.id]=row.image_data;});}
-    ii+=20;
-  }
-  var outfits=outfitsMeta.map(function(o){return Object.assign({},o,{image_data:imageMap[o.id]||null});});
-  window._lastOutfits=outfits;
-  var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});
-  var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
+  // Store metadata immediately — images loaded AFTER AI responds (only for chosen pieces)
+  window._lastOutfits=outfitsMeta.map(function(o){return Object.assign({},o,{image_data:null});});
+  var pieces=outfitsMeta.filter(function(o){return o.photo_type==='Individual Piece';});
+  var looks=outfitsMeta.filter(function(o){return o.photo_type!=='Individual Piece';});
   var bottomCount=pieces.filter(function(p){var d=(p.description||'').toLowerCase();return d.indexOf('| bottom')>=0;}).length;
   var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(40);
   var inspoAll=inspoResp.data||[];
@@ -1292,16 +1282,26 @@ async function _doCompose(extra,anchorPiece){
     if(!res.ok)throw new Error(data.error||JSON.stringify(data));
     if(!data.content)throw new Error('No content');
     var rawJson=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
-    console.log('[WARDROBE DEBUG] Raw AI response length:',rawJson.length);
-    console.log('[WARDROBE DEBUG] Raw AI response:',rawJson.slice(0,2000));
     currentOptions=JSON.parse(rawJson).options||[];
-    console.log('[WARDROBE DEBUG] Parsed options count:',currentOptions.length);
-    if(currentOptions[0]){console.log('[WARDROBE DEBUG] Option 0 pieces:',JSON.stringify(currentOptions[0].pieces));}
-    if(currentOptions[1]){console.log('[WARDROBE DEBUG] Option 1 pieces:',JSON.stringify(currentOptions[1].pieces));}
-    console.log('[WARDROBE DEBUG] _lastOutfits count:',window._lastOutfits?window._lastOutfits.length:0);
-    if(window._lastOutfits&&window._lastOutfits.length>0){console.log('[WARDROBE DEBUG] Sample outfit IDs:',window._lastOutfits.slice(0,5).map(function(o){return o.id+'('+o.photo_type+')';}));}
-    var usedIds=[];currentOptions.forEach(function(o){(o.pieces||[]).forEach(function(p){if(p.wardrobeId)usedIds.push(p.wardrobeId);});});
-    markUsed(usedIds.filter(function(id,i){return usedIds.indexOf(id)===i;}));
+    // Collect all wardrobeIds the AI chose
+    var usedIds=[];
+    currentOptions.forEach(function(o){(o.pieces||[]).forEach(function(p){if(p.wardrobeId&&p.wardrobeId!=='null'&&p.wardrobeId!=='id_or_null')usedIds.push(String(p.wardrobeId).trim());});});
+    var uniqueUsedIds=usedIds.filter(function(id,i){return usedIds.indexOf(id)===i;});
+    // NOW fetch images — only for the pieces the AI actually chose (tiny payload)
+    var imgMap={};
+    if(uniqueUsedIds.length>0){
+      for(var fi=0;fi<uniqueUsedIds.length;fi+=20){
+        var fetchBatch=uniqueUsedIds.slice(fi,fi+20);
+        var fetchResp=await sb.from('outfits').select('id,image_data,image_url').in('id',fetchBatch);
+        if(fetchResp.data){fetchResp.data.forEach(function(row){imgMap[String(row.id)]=row.image_data||row.image_url||null;});}
+      }
+    }
+    // Inject images into _lastOutfits for renderOption to use
+    window._lastOutfits=window._lastOutfits.map(function(o){
+      var sid=String(o.id);
+      return imgMap[sid]?Object.assign({},o,{image_data:imgMap[sid]}):o;
+    });
+    markUsed(uniqueUsedIds);
     if(window._composeTimer){clearInterval(window._composeTimer);window._composeTimer=null;}
     showResult(anchorPiece);
   }catch(e){
@@ -1343,8 +1343,8 @@ function renderOption(idx){
   var heroHtml=heroLook?'<div style="position:relative;margin-bottom:20px"><img src="'+(heroLook.image_data||heroLook.image_url)+'" style="width:100%;max-height:420px;object-fit:cover;object-position:top;display:block;"><div style="position:absolute;top:0;left:0;padding:6px 10px;background:rgba(0,0,0,0.75)"><span style="font-size:9px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;font-weight:700">From your archive</span></div></div>':'';
   var skipNames=['none','n/a','not needed','skip'];
   var piecesHtml=(opt.pieces||[]).filter(function(p){return p.name&&p.name.trim()&&skipNames.indexOf(p.name.toLowerCase().trim())<0;}).map(function(p,pi){
-    var matched=p.wardrobeId?allOutfits.find(function(o){return o.id===p.wardrobeId||o.id===String(p.wardrobeId).trim();}):null;
-    console.log('[WARDROBE DEBUG] piece:',p.category,'wardrobeId:',p.wardrobeId,'matched:',!!matched,'allOutfits len:',allOutfits.length);
+    var pid=p.wardrobeId&&p.wardrobeId!=='null'&&p.wardrobeId!=='id_or_null'?String(p.wardrobeId).trim():null;
+    var matched=pid?allOutfits.find(function(o){return String(o.id)===pid;}):null;
     var imgSrc=matched?(matched.image_data||matched.image_url):null;
     var isFullLookRef=matched&&matched.photo_type!=='Individual Piece';
     var safeId=idx+'-'+pi;var safeName=p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
