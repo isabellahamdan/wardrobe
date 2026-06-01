@@ -1243,7 +1243,7 @@ async function _doCompose(extra,anchorPiece){
     var parts=(o.description||'').split(' | ');
     var name=parts[0]||'item';
     var cat=parts[1]||'';
-    return '[WARDROBE_ID:'+o.id+'] '+( cat?'['+cat.toUpperCase()+']':'')+' | '+o.occasion+'/'+(o.weather||'?')+' | '+name;
+    return 'ID:'+o.id+' ['+( cat?cat.toUpperCase():'?')+'] '+name+' ('+o.occasion+'/'+(o.weather||'?')+')';
   }).join('\n');
   var looksList=looks.map(function(o){var parsed=null;try{parsed=JSON.parse(o.description);}catch(e){}if(parsed&&parsed.pieces){var vp=parsed.pieces.filter(function(p){return p.description&&p.description.length>3&&p.description!=='only if visible';});return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+'\n'+vp.map(function(p){return '  -> '+p.category+' [WARDROBE_ID:'+o.id+']: '+p.description;}).join('\n');}return '[WARDROBE_ID:'+o.id+'] FULL LOOK | '+o.occasion+'/'+(o.weather||'?')+' | '+(o.description||'outfit');}).join('\n');
   var anchorContext=anchorPiece?'\n\nSTART FROM THIS PIECE: "'+(anchorPiece.description?anchorPiece.description.split(' | ')[0]:'piece')+'" (WARDROBE_ID:'+anchorPiece.id+') - build the entire outfit around this.':'';
@@ -1259,18 +1259,16 @@ async function _doCompose(extra,anchorPiece){
     else if(cat.indexOf('dress')>=0)styleCatCounts.dress++;
   });
   var archiveInstruction=archiveOnlyState
-    ?'ARCHIVE ONLY MODE: You MUST use WARDROBE_IDs from the list below for every piece. wardrobeId MUST be a real ID — never null or omitted.\nArchive has: '+styleCatCounts.top+' tops, '+styleCatCounts.bottom+' bottoms, '+styleCatCounts.shoes+' shoes, '+styleCatCounts.dress+' dresses, '+styleCatCounts.outerwear+' outerwear.\nFor bottoms: she has '+styleCatCounts.bottom+' bottoms — pick one by WARDROBE_ID. A null wardrobeId for Bottom is an error in archive-only mode.'
-    :'PREFER her archive. For every FULL LOOK extract each piece separately. Mix pieces from different looks freely. For pieces not in archive set wardrobeId null and describe vividly.';
-  var wardrobeIdRequired=archiveOnlyState?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
+    ?'ARCHIVE ONLY MODE: For every piece, copy the exact ID from "ID:xxxx" at the start of each line in the wardrobe list below. Put that ID in the wardrobeId field. Never use null for tops or bottoms.\nArchive has: '+styleCatCounts.top+' tops, '+styleCatCounts.bottom+' bottoms, '+styleCatCounts.shoes+' shoes, '+styleCatCounts.dress+' dresses, '+styleCatCounts.outerwear+' outerwear.'
+    :'PREFER her archive. Use the ID from "ID:xxxx" at the start of each line. For pieces not in archive set wardrobeId null and describe vividly.';
   var wardrobeIdOptional='"wardrobeId":"ID or null"';
-  // Per-category: require ID only if archive has 10+ pieces of that type
-  var bottomIdNote=(archiveOnlyState&&styleCatCounts.bottom>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var shoesIdNote=(archiveOnlyState&&styleCatCounts.shoes>=10)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var outerwearIdNote=(archiveOnlyState&&styleCatCounts.outerwear>=10)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var topIdNote=(archiveOnlyState&&styleCatCounts.top>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
-  var dressIdNote=(archiveOnlyState&&styleCatCounts.dress>=1)?'"wardrobeId":"REQUIRED - use real ID from archive, NEVER null"':'"wardrobeId":"ID or null"';
   var pieceExample='{"category":"Top","name":"description",'+topIdNote+'},{"category":"Bottom","name":"description",'+bottomIdNote+'},{"category":"Shoes","name":"description",'+shoesIdNote+'},{"category":"Outerwear","name":"description",'+outerwearIdNote+'},{"category":"Accessories","name":"description",'+wardrobeIdOptional+'}';
-  var archiveOnlyNote=archiveOnlyState?('\nArchive counts: tops='+styleCatCounts.top+', bottoms='+styleCatCounts.bottom+', shoes='+styleCatCounts.shoes+', dresses='+styleCatCounts.dress+', outerwear='+styleCatCounts.outerwear+'.\nFor tops and bottoms: wardrobeId MUST be a real ID — she has pieces for both. For shoes/outerwear with fewer than 10 pieces: describe vividly, wardrobeId can be null.'):'';
+  var archiveOnlyNote=archiveOnlyState?('\nCounts: tops='+styleCatCounts.top+', bottoms='+styleCatCounts.bottom+', shoes='+styleCatCounts.shoes+', dresses='+styleCatCounts.dress+'.\nFor tops and bottoms: ALWAYS use the real ID. For shoes/outerwear if fewer than 10: describe freely.'):'';
+  var topIdNote=(archiveOnlyState&&styleCatCounts.top>=1)?'"wardrobeId":"copy exact ID from list"':'"wardrobeId":"ID or null"';
+  var bottomIdNote=(archiveOnlyState&&styleCatCounts.bottom>=1)?'"wardrobeId":"copy exact ID from list"':'"wardrobeId":"ID or null"';
+  var shoesIdNote=(archiveOnlyState&&styleCatCounts.shoes>=10)?'"wardrobeId":"copy exact ID from list"':'"wardrobeId":"ID or null"';
+  var outerwearIdNote=(archiveOnlyState&&styleCatCounts.outerwear>=10)?'"wardrobeId":"copy exact ID from list"':'"wardrobeId":"ID or null"';
+  var dressIdNote=(archiveOnlyState&&styleCatCounts.dress>=1)?'"wardrobeId":"copy exact ID from list"':'"wardrobeId":"ID or null"';
   var prompt='Style Isabella for: '+selectedOccasion+' / '+selectedWeatherStyle+' weather.\n'+(extra?'HER NOTES: '+extra:'')+'\n\n'+archiveInstruction+archiveOnlyNote+anchorContext+'\n\nINDIVIDUAL PIECES ('+pieces.length+'):\n'+(piecesList||'None yet')+'\n\nFULL LOOKS ('+looks.length+'):\n'+(looksList||'None yet')+inspoContext+fbContext+getRecentlyUsedContext()+getWornTopsContext()+'\n\nRULES:\n1) Tips are law.\n2) Mine full looks for pieces. Mix pieces from different looks freely.\n3) Two very different looks.\n4) Omit empty slots.\n5) Archive first. Tops and bottoms MUST use real wardrobeIds from the list. Shoes/outerwear only if 10+ exist in archive.\n6) [DRESS] category pieces are COMPLETE OUTFITS — use category "Dress", never "Top" or "Bottom".\n7) Feel free to suggest a dress as a standalone look.\n\nRespond ONLY in JSON:\n{"options":[{"headline":"3-4 word poetic title","colorStory":"one sentence","pieces":['+pieceExample+'],"stylistNote":"one tip","lip":"lip color","edge":"one elevating detail"},{"headline":"...","colorStory":"...","pieces":[...],"stylistNote":"...","lip":"...","edge":"..."}]}';
   try{
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
@@ -1278,6 +1276,13 @@ async function _doCompose(extra,anchorPiece){
     if(!res.ok)throw new Error(data.error||JSON.stringify(data));
     if(!data.content)throw new Error('No content');
     currentOptions=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim()).options||[];
+    // Normalize wardrobeIds - strip any WARDROBE_ID: prefix the AI may have included
+    currentOptions.forEach(function(o){(o.pieces||[]).forEach(function(p){
+      if(p.wardrobeId&&typeof p.wardrobeId==='string'){
+        p.wardrobeId=p.wardrobeId.replace(/^WARDROBE_ID:/i,'').replace(/^\[ID:/i,'').replace(/\]$/,'').trim();
+        if(p.wardrobeId==='null'||p.wardrobeId==='ID or null'||p.wardrobeId==='REQUIRED - use real ID from archive, NEVER null')p.wardrobeId=null;
+      }
+    });});
     var usedIds=[];currentOptions.forEach(function(o){(o.pieces||[]).forEach(function(p){if(p.wardrobeId)usedIds.push(p.wardrobeId);});});
     markUsed(usedIds.filter(function(id,i){return usedIds.indexOf(id)===i;}));
     if(window._composeTimer){clearInterval(window._composeTimer);window._composeTimer=null;}
