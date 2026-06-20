@@ -235,6 +235,31 @@ button{cursor:pointer}
 .packing-list-box{background:#fff;border:1px solid #e0e0e0;border-top:2px solid #000;padding:20px}
 .packing-cat-label{font-size:12px;letter-spacing:0.3em;color:#555;text-transform:uppercase;font-weight:700;margin-bottom:8px}
 .packing-item{font-size:16px;color:#000;padding:6px 0;border-bottom:1px solid #f0f0f0;line-height:1.4}
+/* Calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e0e0e0;margin-bottom:20px}
+.cal-header-cell{text-align:center;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;color:#999;padding:8px 2px;background:#fff}
+.cal-day{background:#fff;min-height:52px;padding:6px 4px;cursor:pointer;position:relative;transition:background 0.15s}
+.cal-day:hover{background:#f9f9f9}
+.cal-day.today{box-shadow:inset 0 0 0 2px #000}
+.cal-day.other-month{background:#fafafa}
+.cal-day-num{font-size:13px;font-weight:700;color:#000;margin-bottom:3px;line-height:1}
+.cal-day.other-month .cal-day-num{color:#ccc}
+.cal-dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin:1px}
+.cal-dot-wore{background:#4a7a5a}
+.cal-dot-plan{background:#2E3F6F}
+.cal-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.cal-month-title{font-size:22px;font-weight:700;color:#000;font-style:italic}
+.cal-nav-btn{width:36px;height:36px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.cal-detail{border-top:3px solid #000;padding-top:24px;margin-top:4px}
+.cal-detail-date{font-size:11px;letter-spacing:0.35em;color:#999;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.cal-detail-title{font-size:22px;font-weight:700;font-style:italic;color:#000;margin-bottom:20px}
+.wore-log-card{border:1px solid #e0e0e0;border-left:3px solid #4a7a5a;padding:14px 16px;margin-bottom:12px;background:#f5fff8}
+.plan-log-card{border:1px solid #e0e0e0;border-left:3px solid #2E3F6F;padding:14px 16px;margin-bottom:12px;background:#f5f7fd}
+/* Plan Ahead mode */
+.plan-event-card{border:1px solid #e0e0e0;border-left:3px solid #2E3F6F;padding:14px 16px;margin-bottom:10px;background:#f5f7fd;position:relative}
+.plan-event-date-label{font-size:11px;letter-spacing:0.3em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:3px}
+.plan-event-occasion{font-size:17px;font-weight:700;color:#000;margin-bottom:4px}
+.plan-event-pieces{font-size:14px;color:#555;font-style:italic;line-height:1.6}
 </style>
 </head>
 <body>
@@ -274,6 +299,7 @@ button{cursor:pointer}
         <button class="tab" onclick="switchTab('wardrobe',this)" id="archive-tab">Archive</button>
         <button class="tab" onclick="switchTab('inspiration',this)" id="inspiration-tab">Inspiration</button>
         <button class="tab" onclick="switchTab('travel',this)" id="travel-tab">&#x2708; Travel</button>
+        <button class="tab" onclick="switchTab('calendar',this)" id="calendar-tab">&#128197; Calendar</button>
       </div>
     </div>
   </div>
@@ -295,6 +321,10 @@ button{cursor:pointer}
           <button class="mode-btn-voice" onclick="selectStyleMode('voice',this)">
             <span class="mode-label">&#127897; Just tell me</span>
             <span class="mode-sub">Speak freely &mdash; I figure out the rest</span>
+          </button>
+          <button class="mode-btn-plan" onclick="selectStyleMode('plan',this)">
+            <span class="mode-label">&#128197; Plan ahead</span>
+            <span class="mode-sub">Plan outfits for future days &amp; save them</span>
           </button>
         </div>
       </div>
@@ -443,6 +473,42 @@ button{cursor:pointer}
           </div>
         </div>
         <button class="btn-ghost" onclick="resetStylist()" style="margin-top:12px">New Look</button>
+      </div>
+
+      <!-- PLAN AHEAD PANEL -->
+      <div id="stylist-plan" style="display:none">
+        <div style="margin-bottom:20px">
+          <div style="border:1px solid #e0e0e0;border-top:2px solid #2E3F6F;padding:18px 20px;background:#f5f7fd;margin-bottom:20px">
+            <div style="font-size:13px;letter-spacing:0.3em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:6px">Tell me what to plan</div>
+            <div style="font-size:15px;color:#888;font-style:italic;margin-bottom:14px;line-height:1.5">e.g. "Work Monday and Tuesday next week, dinner Friday evening, warn weather"</div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button id="mic-plan-voice" ontouchstart="event.preventDefault();startPlanVoice()" onclick="startPlanVoice()" style="width:52px;height:52px;border-radius:50%;background:#2E3F6F;border:none;color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#127897;</button>
+              <div id="plan-voice-status" style="font-size:15px;color:#2E3F6F;font-style:italic;line-height:1.5"></div>
+            </div>
+          </div>
+          <div style="margin-bottom:20px">
+            <div class="section-label">Events to plan</div>
+            <div id="plan-events-list" style="margin-bottom:12px"></div>
+            <button onclick="addPlanEvent()" style="width:100%;padding:14px;background:transparent;border:1px dashed #2E3F6F;color:#2E3F6F;font-size:13px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">+ Add Event</button>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-label">
+              <div class="toggle-label-title">Archive only</div>
+              <div class="toggle-label-sub">Suggest only pieces I already own</div>
+            </div>
+            <div class="toggle" id="plan-archive-toggle" onclick="togglePlanArchiveOnly()" style="background:#000"><div class="toggle-knob" id="plan-archive-toggle-knob" style="left:24px"></div></div>
+          </div>
+          <button class="btn-primary" id="plan-compose-btn" onclick="composePlanAhead()" disabled style="background:#2E3F6F">Plan My Outfits</button>
+          <div id="plan-error" style="display:none;margin-top:12px" class="feedback-msg error"></div>
+        </div>
+        <div id="plan-result" style="display:none">
+          <div class="result-meta" id="plan-result-label"></div>
+          <div class="result-title" id="plan-result-title" style="font-size:28px"></div>
+          <div style="margin-top:20px" id="plan-result-content"></div>
+          <button onclick="savePlanAhead()" id="plan-save-btn" style="margin-top:20px;width:100%;padding:16px;background:#2E3F6F;border:none;color:#fff;font-size:13px;letter-spacing:0.3em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">&#9733; Save to Calendar</button>
+          <div id="plan-save-status" style="font-size:13px;color:#4a7a5a;font-style:italic;margin-top:8px;min-height:16px"></div>
+        </div>
+        <div style="margin-top:16px"><button class="btn-ghost" onclick="resetStylist()">&#8592; Back</button></div>
       </div>
     </div>
 
@@ -756,6 +822,73 @@ button{cursor:pointer}
       </div>
     </div>
 
+    <!-- CALENDAR TAB -->
+    <div id="tab-calendar" style="display:none;animation:fadeUp 0.4s ease">
+      <div class="cal-month-nav">
+        <button class="cal-nav-btn" onclick="calPrevMonth()">&#8592;</button>
+        <div class="cal-month-title" id="cal-month-title"></div>
+        <button class="cal-nav-btn" onclick="calNextMonth()">&#8594;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#e0e0e0;margin-bottom:2px">
+        <div class="cal-header-cell">Sun</div>
+        <div class="cal-header-cell">Mon</div>
+        <div class="cal-header-cell">Tue</div>
+        <div class="cal-header-cell">Wed</div>
+        <div class="cal-header-cell">Thu</div>
+        <div class="cal-header-cell">Fri</div>
+        <div class="cal-header-cell">Sat</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <!-- Day detail panel -->
+      <div id="cal-detail" style="display:none" class="cal-detail">
+        <div class="cal-detail-date" id="cal-detail-date"></div>
+        <div class="cal-detail-title" id="cal-detail-title"></div>
+        <div id="cal-detail-content"></div>
+        <!-- Log What I Wore -->
+        <div id="cal-wore-section" style="margin-top:20px;border-top:1px solid #e0e0e0;padding-top:20px">
+          <div class="section-label" style="margin-bottom:12px">What I wore this day</div>
+          <div id="cal-wore-existing"></div>
+          <div id="cal-wore-add">
+            <div style="display:flex;gap:2px;margin-bottom:14px">
+              <button id="wore-tab-mirror" onclick="selectWoreTab('mirror')" style="flex:1;padding:12px;border:1px solid #000;background:#000;color:#fff;font-size:12px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Mirror Photo</button>
+              <button id="wore-tab-pieces" onclick="selectWoreTab('pieces')" style="flex:1;padding:12px;border:1px solid #e0e0e0;background:#fff;color:#666;font-size:12px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">Describe It</button>
+            </div>
+            <div id="wore-mirror-section">
+              <input type="file" id="wore-photo-input" accept="image/*" style="display:none" onchange="handleWorePhoto(this.files)">
+              <div onclick="document.getElementById('wore-photo-input').click()" style="border:1px solid #e0e0e0;border-top:2px solid #000;padding:28px 24px;text-align:center;cursor:pointer;background:#fff;margin-bottom:12px">
+                <div style="font-size:24px;margin-bottom:8px">&#128247;</div>
+                <div style="font-size:14px;letter-spacing:0.25em;text-transform:uppercase;font-weight:700;color:#000">Upload mirror photo</div>
+                <div style="font-size:13px;color:#999;font-style:italic;margin-top:4px">Your actual outfit today</div>
+              </div>
+              <div id="wore-photo-preview" style="display:none;margin-bottom:12px"></div>
+            </div>
+            <div id="wore-pieces-section" style="display:none">
+              <div class="textarea-with-mic" style="margin-bottom:12px">
+                <textarea class="context-textarea" id="wore-desc-input" rows="3" placeholder="e.g. Navy wide-leg trousers, white silk top, black knee boots, gold hoops..."></textarea>
+                <button class="mic-btn-inline" id="mic-wore-desc" ontouchstart="event.preventDefault();toggleMicForTextarea('wore-desc-input','mic-wore-desc','mic-wore-status')" onclick="toggleMicForTextarea('wore-desc-input','mic-wore-desc','mic-wore-status')" title="Tap to speak">&#127897;</button>
+              </div>
+              <div class="voice-status" id="mic-wore-status"></div>
+            </div>
+            <div style="margin-bottom:12px">
+              <div class="section-label" style="margin-bottom:8px">Occasion</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="filter-btn" id="wore-occ-day" onclick="selectWoreOcc('Day',this)">Day</button>
+                <button class="filter-btn" id="wore-occ-work" onclick="selectWoreOcc('Work',this)">Work</button>
+                <button class="filter-btn" id="wore-occ-night" onclick="selectWoreOcc('Night Out',this)">Night Out</button>
+                <button class="filter-btn" id="wore-occ-event" onclick="selectWoreOcc('Event',this)">Event</button>
+              </div>
+            </div>
+            <div class="textarea-with-mic" style="margin-bottom:8px">
+              <textarea class="context-textarea" id="wore-note-input" rows="2" placeholder="Optional note: how I felt, what worked, what didn't..." style="padding-right:58px"></textarea>
+              <button class="mic-btn-inline" id="mic-wore-note" ontouchstart="event.preventDefault();toggleMicForTextarea('wore-note-input','mic-wore-note','mic-wore-note-status')" onclick="toggleMicForTextarea('wore-note-input','mic-wore-note','mic-wore-note-status')" title="Tap to speak">&#127897;</button>
+            </div>
+            <div class="voice-status" id="mic-wore-note-status"></div>
+            <button onclick="saveWhatIWore()" id="wore-save-btn" class="btn-primary" style="margin-top:12px">Save What I Wore</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -834,12 +967,13 @@ function killAllMics(){
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
-  ['stylist','wardrobe','inspiration','travel'].forEach(function(t){
+  ['stylist','wardrobe','inspiration','travel','calendar'].forEach(function(t){
     document.getElementById('tab-'+t).style.display=t===tab?'block':'none';
   });
   if(tab==='wardrobe')loadGallery();
   if(tab==='inspiration')loadInspiration();
   if(tab==='travel'){var t=new Date().toISOString().split('T')[0];var df=document.getElementById('travel-date-from');if(df&&!df.value)df.min=t;loadSavedTrips();}
+  if(tab==='calendar')initCalendar();
 }
 
 // ── SPEECH RECOGNITION ────────────────────────────────────
@@ -974,11 +1108,12 @@ function stopMicForFeedback(){
 // ── VOICE MODE ────────────────────────────────────────────
 function selectStyleMode(mode,btn){
   document.getElementById('stylist-mode-select').style.display='none';
-  document.querySelectorAll('.mode-btn,.mode-btn-voice').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.mode-btn,.mode-btn-voice,.mode-btn-plan').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   document.getElementById('stylist-scratch').style.display='none';
   document.getElementById('stylist-piece').style.display='none';
   document.getElementById('stylist-voice').style.display='none';
+  document.getElementById('stylist-plan').style.display='none';
   if(mode==='scratch'){document.getElementById('stylist-scratch').style.display='block';}
   else if(mode==='piece'){document.getElementById('stylist-piece').style.display='block';loadPiecePicker();}
   else if(mode==='voice'){
@@ -987,6 +1122,7 @@ function selectStyleMode(mode,btn){
     var doneBtn=document.getElementById('voice-done-btn');if(doneBtn)doneBtn.style.display='none';
     var micBtn=document.getElementById('voice-mic-big-btn');if(micBtn)micBtn.style.animation='';
   }
+  else if(mode==='plan'){document.getElementById('stylist-plan').style.display='block';initPlanAhead();}
 }
 function handleVoiceMicTap(){
   if(voiceModeActive){
@@ -1114,15 +1250,19 @@ async function loadPiecePicker(){
   container.innerHTML='<div class="loading-dot">Loading your pieces...</div>';
   var resp=await sb.from('outfits').select('id,description,image_url,occasion,photo_type').eq('photo_type','Individual Piece').order('created_at',{ascending:false});
   if(!resp.data||resp.data.length===0){container.innerHTML='<div class="empty-state"><div class="empty-text">No individual pieces yet.</div></div>';return;}
-  window._allPieces=resp.data;window._pickerFilter='All';window._pickerSearch='';renderPiecePicker();
-  // load images in batches
+  window._allPieces=resp.data;window._pickerFilter='All';window._pickerSearch='';
+  window._pickerImageCache={};
+  renderPiecePicker();
+  // load images in batches and cache them so re-renders don't lose images
   var ids=resp.data.map(function(p){return p.id;});
   for(var bi=0;bi<ids.length;bi+=20){
     var batch=ids.slice(bi,bi+20);
     var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',batch);
     if(ir.data){ir.data.forEach(function(row){
+      var src=row.image_data||row.image_url||'';
+      window._pickerImageCache[row.id]=src;
       var el=document.getElementById('pickerimg-'+row.id);
-      if(el)el.src=row.image_data||row.image_url||'';
+      if(el)el.src=src;
     });}
   }
 }
@@ -1141,6 +1281,12 @@ function renderPiecePicker(){
     +'</div>';
   var pieceCards=filtered.map(function(p){var pName=(p.description?p.description.split(' | ')[0]:'')||'Piece';return '<div class="piece-picker-item" id="picker-'+p.id+'" onclick="selectPiece(&quot;'+p.id+'&quot;)"><img class="piece-picker-img" id="pickerimg-'+p.id+'" src="" style="background:#f0f0f0"><div class="piece-picker-name">'+pName+'</div><div class="piece-picker-check">&#10003;</div></div>';}).join('');
   container.innerHTML=searchBar+'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'+catBtns+'</div>'+(filtered.length===0?'<div style="padding:20px;text-align:center;font-size:15px;color:#999;font-style:italic">No pieces found.</div>':'<div class="piece-picker-grid">'+pieceCards+'</div>');
+  // Re-apply cached images so filter/search re-renders don't lose loaded photos
+  var cache=window._pickerImageCache||{};
+  filtered.forEach(function(p){
+    var el=document.getElementById('pickerimg-'+p.id);
+    if(el&&cache[p.id])el.src=cache[p.id];
+  });
 }
 function onPickerSearch(val){window._pickerSearch=val;renderPiecePicker();if(selectedPieceId){var pe=document.getElementById('picker-'+selectedPieceId);if(pe)pe.classList.add('selected');}}
 function clearPickerSearch(){window._pickerSearch='';renderPiecePicker();}
@@ -1387,7 +1533,7 @@ function resetStylist(){
   document.querySelectorAll('.mode-btn,.mode-btn-voice').forEach(function(b){b.classList.remove('active');});
   var ec=document.getElementById('extra-context');if(ec)ec.value='';var ecp=document.getElementById('extra-context-piece');if(ecp)ecp.value='';
   document.getElementById('stylist-mode-select').style.display='block';
-  ['stylist-scratch','stylist-piece','stylist-voice','stylist-result'].forEach(function(id){document.getElementById(id).style.display='none';});
+  ['stylist-scratch','stylist-piece','stylist-voice','stylist-result','stylist-plan'].forEach(function(id){document.getElementById(id).style.display='none';});
   var btn=document.getElementById('compose-btn');if(btn){btn.disabled=true;btn.textContent='Style Me';}
   var btn2=document.getElementById('compose-piece-btn');if(btn2){btn2.disabled=true;btn2.textContent='Style Me';}
   var toggle=document.getElementById('archive-toggle');if(toggle){toggle.style.background='#000';document.getElementById('archive-toggle-knob').style.left='24px';}
@@ -2558,6 +2704,399 @@ function resetTravel(){
   document.getElementById('travel-plan-btn').disabled=true;document.getElementById('travel-error').style.display='none';
   document.getElementById('travel-planner').style.display='block';document.getElementById('travel-result').style.display='none';document.getElementById('travel-result-content').innerHTML='';
   var tt=document.getElementById('travel-archive-toggle');if(tt){tt.style.background='#000';document.getElementById('travel-archive-toggle-knob').style.left='24px';}
+}
+
+// ── PLAN AHEAD ═══════════════════════════════════════════
+var planEvents=[];var planArchiveOnly=true;var planVoiceRec=null;var planVoiceActive=false;var planVoiceAccumulated='';
+
+function initPlanAhead(){
+  planEvents=[];planArchiveOnly=true;
+  renderPlanEvents();
+  document.getElementById('plan-result').style.display='none';
+  document.getElementById('plan-error').style.display='none';
+  document.getElementById('plan-compose-btn').disabled=true;
+  var tog=document.getElementById('plan-archive-toggle');if(tog){tog.style.background='#000';document.getElementById('plan-archive-toggle-knob').style.left='24px';}
+}
+function togglePlanArchiveOnly(){
+  planArchiveOnly=!planArchiveOnly;
+  document.getElementById('plan-archive-toggle').style.background=planArchiveOnly?'#000':'#e0e0e0';
+  document.getElementById('plan-archive-toggle-knob').style.left=planArchiveOnly?'24px':'2px';
+}
+function addPlanEvent(){
+  var today=new Date().toISOString().split('T')[0];
+  planEvents.push({date:today,occasion:'Day',weather:'Mild',note:'',id:Date.now()});
+  renderPlanEvents();
+}
+function removePlanEvent(id){
+  planEvents=planEvents.filter(function(e){return e.id!==id;});
+  renderPlanEvents();
+}
+function updatePlanEvent(id,field,val){
+  var ev=planEvents.find(function(e){return e.id===id;});
+  if(ev)ev[field]=val;
+  checkPlanReady();
+}
+function checkPlanReady(){
+  document.getElementById('plan-compose-btn').disabled=planEvents.length===0;
+}
+function renderPlanEvents(){
+  var list=document.getElementById('plan-events-list');
+  if(!planEvents.length){list.innerHTML='<div style="font-size:15px;color:#999;font-style:italic;padding:10px 0">No events yet. Add one below or speak.</div>';checkPlanReady();return;}
+  var occs=['Day','Work','Night Out','Event'];var wxs=['Warm','Mild','Cold/Rain','Winter'];
+  list.innerHTML=planEvents.map(function(ev){
+    var occBtns=occs.map(function(o){var active=ev.occasion===o;return '<button onclick="updatePlanEvent('+ev.id+',\'occasion\',\''+o+'\')" style="padding:6px 10px;border:1px solid '+(active?'#000':'#e0e0e0')+';background:'+(active?'#000':'#fff')+';color:'+(active?'#fff':'#666')+';font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">'+o+'</button>';}).join('');
+    var wxBtns=wxs.map(function(w){var active=ev.weather===w;return '<button onclick="updatePlanEvent('+ev.id+',\'weather\',\''+w+'\')" style="padding:6px 10px;border:1px solid '+(active?'#000':'#e0e0e0')+';background:'+(active?'#000':'#fff')+';color:'+(active?'#fff':'#666')+';font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;font-family:inherit;cursor:pointer;">'+w+'</button>';}).join('');
+    return '<div class="plan-event-card">'
+      +'<button onclick="removePlanEvent('+ev.id+')" style="position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:#f5f5f5;border:1px solid #e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;">&#10005;</button>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+      +'<div><div style="font-size:10px;letter-spacing:0.25em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:4px">Date</div>'
+      +'<input type="date" value="'+ev.date+'" onchange="updatePlanEvent('+ev.id+',\'date\',this.value)" style="width:100%;border:none;border-bottom:1px solid #000;font-size:15px;font-family:inherit;font-weight:700;color:#000;background:transparent;padding:4px 0;outline:none"></div>'
+      +'<div><div style="font-size:10px;letter-spacing:0.25em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:4px">Notes</div>'
+      +'<input type="text" value="'+escBatchVal(ev.note||'')+'" onchange="updatePlanEvent('+ev.id+',\'note\',this.value)" placeholder="e.g. important client..." style="width:100%;border:none;border-bottom:1px solid #e0e0e0;font-size:14px;font-family:inherit;color:#000;background:transparent;padding:4px 0;outline:none"></div>'
+      +'</div>'
+      +'<div style="margin-bottom:8px"><div style="font-size:10px;letter-spacing:0.25em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:6px">Occasion</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+occBtns+'</div></div>'
+      +'<div><div style="font-size:10px;letter-spacing:0.25em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:6px">Weather</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+wxBtns+'</div></div>'
+      +'</div>';
+  }).join('');
+  checkPlanReady();
+}
+
+function startPlanVoice(){
+  var btn=document.getElementById('mic-plan-voice');
+  var statusEl=document.getElementById('plan-voice-status');
+  var SpeechRec=getSpeechRecognition();
+  if(!SpeechRec){if(statusEl)statusEl.textContent='Voice not supported on this browser.';return;}
+  if(planVoiceActive){
+    planVoiceActive=false;
+    if(planVoiceRec){try{planVoiceRec.stop();}catch(e){}planVoiceRec=null;}
+    if(btn){btn.style.background='#2E3F6F';btn.innerHTML='&#127897;';}
+    var best=planVoiceAccumulated.trim();
+    if(best){if(statusEl)statusEl.textContent='Parsing...';parsePlanVoice(best);}
+    return;
+  }
+  killAllMics();
+  planVoiceActive=true;planVoiceAccumulated='';
+  if(btn){btn.style.background='#1a2850';btn.innerHTML='&#9632;';}
+  if(statusEl)statusEl.textContent='Listening... tap to stop.';
+  setTimeout(function(){
+    function startSession(){
+      if(!planVoiceActive)return;
+      var rec=new SpeechRec();
+      planVoiceRec=rec;_activeMicInstance=rec;
+      rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
+      rec.onresult=function(e){
+        var interim='';
+        for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)planVoiceAccumulated+=e.results[i][0].transcript+' ';else interim+=e.results[i][0].transcript;}
+        var display=(planVoiceAccumulated+(interim||'')).trim();
+        if(statusEl)statusEl.textContent='Heard: '+display;
+      };
+      rec.onerror=function(e){
+        if(e.error==='aborted'||e.error==='no-speech'){if(planVoiceActive)setTimeout(startSession,300);return;}
+        planVoiceActive=false;if(btn){btn.style.background='#2E3F6F';btn.innerHTML='&#127897;';}
+        if(statusEl)statusEl.textContent='Mic error. Tap to try again.';planVoiceRec=null;
+      };
+      rec.onend=function(){if(planVoiceActive)setTimeout(startSession,300);};
+      try{rec.start();}catch(ex){if(planVoiceActive)setTimeout(startSession,500);}
+    }
+    startSession();
+  },600);
+}
+async function parsePlanVoice(transcript){
+  var statusEl=document.getElementById('plan-voice-status');
+  var today=new Date().toISOString().split('T')[0];
+  try{
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,system:'Extract outfit planning events from speech. Today is '+today+'. Return ONLY JSON array: [{"date":"YYYY-MM-DD","occasion":"Day|Work|Night Out|Event","weather":"Warm|Mild|Cold/Rain|Winter","note":"extra context"}]. Infer dates from relative expressions like "next Monday", "Friday". Default weather to Mild if not specified.',messages:[{role:'user',content:transcript}]})});
+    var data=await res.json();
+    var raw=data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim();
+    var parsed=JSON.parse(raw);
+    if(Array.isArray(parsed)&&parsed.length){
+      planEvents=parsed.map(function(e){return {date:e.date||today,occasion:e.occasion||'Day',weather:e.weather||'Mild',note:e.note||'',id:Date.now()+Math.random()};});
+      renderPlanEvents();
+      if(statusEl)statusEl.textContent='Got it! Review and adjust below.';
+    } else {
+      if(statusEl)statusEl.textContent='Could not parse. Please add events manually.';
+    }
+  }catch(err){if(statusEl)statusEl.textContent='Could not parse. Please add events manually.';}
+}
+
+async function composePlanAhead(){
+  if(!planEvents.length)return;
+  var btn=document.getElementById('plan-compose-btn');
+  btn.disabled=true;btn.textContent='Planning...';
+  document.getElementById('plan-error').style.display='none';
+  document.getElementById('plan-result').style.display='none';
+  try{
+    var metaResp=await sb.from('outfits').select('id,occasion,weather,description,photo_type,image_url').order('created_at',{ascending:false}).limit(300);
+    var outfits=metaResp.data||[];
+    window._lastOutfits=outfits;
+    var pieces=outfits.filter(function(o){return o.photo_type==='Individual Piece';});
+    var looks=outfits.filter(function(o){return o.photo_type!=='Individual Piece';});
+    var inspoResp=await sb.from('inspiration').select('type,text_content,ai_summary').order('created_at',{ascending:false}).limit(30);
+    var textTips=(inspoResp.data||[]).filter(function(i){return !((i.text_content||'').startsWith('INFLUENCER:'))&&(i.type==='text'||!i.type);});
+    var tipsStr=textTips.map(function(i){return '- '+(i.ai_summary||(i.text_content||'').split('\n')[0]);}).filter(Boolean).slice(0,15).join('\n');
+    var fbResp=await sb.from('style_feedback').select('piece_name,feedback,reason,occasion,weather').order('created_at',{ascending:false}).limit(40);
+    var fbNotes=(fbResp.data||[]).filter(function(f){return f.feedback==='note'||f.feedback==='dislike';});
+    var fbContext=fbNotes.length?'\n\nHER FEEDBACK:\n'+fbNotes.slice(0,15).map(function(f){return '- '+(f.reason||f.piece_name);}).join('\n'):'';
+    var piecesList=pieces.map(function(o){var parts=(o.description||'').split(' | ');return '[ID:'+o.id+'] '+(parts[1]?'['+parts[1].toUpperCase()+'] ':'')+parts[0];}).join('\n');
+    var archiveInstr=planArchiveOnly?'ARCHIVE ONLY: Every piece MUST reference an [ID:xxx] from the wardrobe list.':'Prefer archive pieces with [ID:xxx]. Describe missing pieces vividly.';
+    var wornCtx=getWornTopsContext();
+    var eventsStr=planEvents.map(function(e,i){
+      var d=new Date(e.date);var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return 'Event '+(i+1)+': '+days[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+' | '+e.occasion+' | '+e.weather+(e.note?' | Note: '+e.note:'');
+    }).join('\n');
+    var prompt='Plan outfits for Isabella for these upcoming events:\n\n'+eventsStr+'\n\n'+archiveInstr+'\n\nHER WARDROBE PIECES:\n'+(piecesList||'None yet')+'\n\n'+(tipsStr?'STYLE RULES:\n'+tipsStr+'\n\n':'')+fbContext+wornCtx+'\n\nRULE: Do NOT repeat the same top across different events. Each top appears once.\n\nRespond ONLY in JSON:\n{"planTitle":"short evocative title","events":[{"eventIndex":0,"dayLabel":"Mon 16 Jun","occasion":"Work","outfit":{"top":{"name":"","wardrobeId":"ID or null"},"bottom":{"name":"","wardrobeId":"ID or null"},"shoes":{"name":"","wardrobeId":"ID or null"},"outerwear":{"name":"","wardrobeId":"ID or null"},"accessories":{"name":"","wardrobeId":"ID or null"}},"stylistNote":""},...]}\n';
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,system:USER_PROFILE,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();if(!res.ok)throw new Error(data.error||JSON.stringify(data));
+    var result=JSON.parse(data.content.map(function(i){return i.text||'';}).join('').replace(/```json|```/g,'').trim());
+    window._lastPlanResult=result;window._lastPlanEvents=planEvents.slice();
+    // Batch-load images
+    var neededIds=[];
+    if(result.events){result.events.forEach(function(ev){var o=ev.outfit||{};['top','bottom','shoes','outerwear','accessories'].forEach(function(k){if(o[k]&&o[k].wardrobeId)neededIds.push(o[k].wardrobeId);});});}
+    var uniqueIds=neededIds.filter(function(id,i){return neededIds.indexOf(id)===i;});
+    if(uniqueIds.length){var ir=await sb.from('outfits').select('id,image_data,image_url').in('id',uniqueIds);if(ir.data){ir.data.forEach(function(row){var item=outfits.find(function(x){return x.id===row.id;});if(item)item.image_data=row.image_data||null;});}}
+    renderPlanResult(result);
+  }catch(e){
+    var errEl=document.getElementById('plan-error');errEl.textContent='Error: '+(e.message||'Unknown');errEl.style.display='block';
+  }
+  btn.disabled=false;btn.textContent='Plan My Outfits';
+}
+
+function renderPlanResult(result){
+  document.getElementById('plan-result-label').textContent=planEvents.length+' event'+(planEvents.length===1?'':'s')+' planned';
+  document.getElementById('plan-result-title').textContent=result.planTitle||'Your Plan';
+  var allOutfits=window._lastOutfits||[];
+  var html='';
+  if(result.events&&result.events.length){
+    result.events.forEach(function(ev,i){
+      var planEv=window._lastPlanEvents[ev.eventIndex!==undefined?ev.eventIndex:i]||window._lastPlanEvents[i]||{};
+      html+='<div class="travel-day-card">';
+      html+='<div class="travel-day-label">'+ev.dayLabel+'</div>';
+      html+='<div class="travel-day-occasion">'+ev.occasion+'</div>';
+      var o=ev.outfit||{};
+      [{key:'top',label:'Top'},{key:'bottom',label:'Bottom'},{key:'shoes',label:'Shoes'},{key:'outerwear',label:'Outerwear'},{key:'accessories',label:'Accessories'}].forEach(function(slot){
+        var piece=o[slot.key];if(!piece||!piece.name||piece.name==='none'||!piece.name.trim())return;
+        var matched=piece.wardrobeId?allOutfits.find(function(x){return x.id===piece.wardrobeId;}):null;
+        var imgSrc=matched?(matched.image_data||matched.image_url):null;
+        html+='<div class="travel-piece-row">';
+        if(imgSrc)html+='<img src="'+imgSrc.replace(/'/g,'&#39;')+'" class="travel-piece-thumb" style="cursor:zoom-in" onclick="openLightbox(\''+imgSrc.replace(/'/g,'&#39;')+'\',\''+piece.name.replace(/'/g,'&#39;')+'\')">';
+        else html+='<div class="travel-piece-thumb-empty"><span style="font-size:10px;color:#aaa;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">'+slot.label.slice(0,3).toUpperCase()+'</span></div>';
+        html+='<div><div class="travel-slot-label">'+slot.label+(matched?'<span style="color:#4a7a5a;margin-left:4px">&#10003;</span>':'')+'</div><div class="travel-slot-name">'+piece.name+'</div></div></div>';
+      });
+      if(ev.stylistNote)html+='<div class="travel-stylist-note">'+ev.stylistNote+'</div>';
+      html+='</div>';
+    });
+  }
+  document.getElementById('plan-result-content').innerHTML=html;
+  document.getElementById('plan-result').style.display='block';
+  var st=document.getElementById('plan-save-status');if(st)st.textContent='';
+  var sBtn=document.getElementById('plan-save-btn');if(sBtn)sBtn.disabled=false;
+}
+
+function savePlanAhead(){
+  var result=window._lastPlanResult;var events=window._lastPlanEvents;
+  if(!result)return;
+  var saved=JSON.parse(localStorage.getItem('wb_planAhead')||'[]');
+  events.forEach(function(ev,i){
+    var evResult=result.events&&result.events[i];
+    saved.push({date:ev.date,occasion:ev.occasion,weather:ev.weather,note:ev.note||'',outfit:evResult?evResult.outfit:null,planTitle:result.planTitle||'',savedAt:Date.now()});
+  });
+  // Keep last 100 planned events
+  if(saved.length>100)saved=saved.slice(-100);
+  localStorage.setItem('wb_planAhead',JSON.stringify(saved));
+  var st=document.getElementById('plan-save-status');
+  if(st)st.textContent='Saved to your calendar!';
+  var sBtn=document.getElementById('plan-save-btn');if(sBtn)sBtn.disabled=true;
+  setTimeout(function(){var s=document.getElementById('plan-save-status');if(s)s.textContent='';},3000);
+}
+
+// ── CALENDAR ══════════════════════════════════════════════
+var calYear=new Date().getFullYear();var calMonth=new Date().getMonth();var calSelectedDate=null;
+
+function initCalendar(){
+  renderCalendar();
+}
+function calPrevMonth(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function calNextMonth(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
+
+function renderCalendar(){
+  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-title').textContent=months[calMonth]+' '+calYear;
+  // Load data for this month
+  var planData=JSON.parse(localStorage.getItem('wb_planAhead')||'[]');
+  var woreData=JSON.parse(localStorage.getItem('wb_whatIWore')||'[]');
+  // Build a map of date -> {plan, wore}
+  var dateMap={};
+  planData.forEach(function(p){var d=p.date;if(!dateMap[d])dateMap[d]={plan:[],wore:[]};dateMap[d].plan.push(p);});
+  woreData.forEach(function(w){var d=w.date;if(!dateMap[d])dateMap[d]={plan:[],wore:[]};dateMap[d].wore.push(w);});
+  // Also check wb_wornTops for "Wore this" button saves
+  try{
+    var wt=JSON.parse(localStorage.getItem('wb_wornTops')||'[]');
+    wt.forEach(function(w){
+      if(!w.date)return;
+      if(!dateMap[w.date])dateMap[w.date]={plan:[],wore:[]};
+      dateMap[w.date].wore.push({date:w.date,description:w.name||w.cat||'Outfit',occasion:'',note:''});
+    });
+  }catch(e){}
+  var firstDay=new Date(calYear,calMonth,1).getDay();
+  var daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  var today=new Date();var todayStr=today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
+  var html='';
+  // Leading empty cells
+  for(var i=0;i<firstDay;i++){
+    var prevDate=new Date(calYear,calMonth,1-firstDay+i);
+    html+='<div class="cal-day other-month"><div class="cal-day-num">'+prevDate.getDate()+'</div></div>';
+  }
+  for(var d=1;d<=daysInMonth;d++){
+    var dateStr=calYear+'-'+('0'+(calMonth+1)).slice(-2)+'-'+('0'+d).slice(-2);
+    var dayData=dateMap[dateStr]||{plan:[],wore:[]};
+    var dots='';
+    if(dayData.wore.length)dots+='<span class="cal-dot cal-dot-wore"></span>';
+    if(dayData.plan.length)dots+='<span class="cal-dot cal-dot-plan"></span>';
+    var isToday=dateStr===todayStr;
+    var isSelected=dateStr===calSelectedDate;
+    html+='<div class="cal-day'+(isToday?' today':'')+(isSelected?' selected':'')+'" onclick="selectCalDay(\''+dateStr+'\')" style="'+(isSelected?'background:#f0f0f0;':'')+'">'
+      +'<div class="cal-day-num">'+d+'</div>'
+      +(dots?'<div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:2px">'+dots+'</div>':'')
+      +'</div>';
+  }
+  // Trailing cells
+  var totalCells=firstDay+daysInMonth;var remaining=(7-totalCells%7)%7;
+  for(var j=1;j<=remaining;j++){html+='<div class="cal-day other-month"><div class="cal-day-num">'+j+'</div></div>';}
+  document.getElementById('cal-grid').innerHTML=html;
+  if(calSelectedDate)showCalDetail(calSelectedDate);
+}
+
+function selectCalDay(dateStr){
+  calSelectedDate=dateStr;
+  renderCalendar();
+  showCalDetail(dateStr);
+}
+
+function showCalDetail(dateStr){
+  var d=new Date(dateStr+'T12:00:00');
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var label=days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
+  document.getElementById('cal-detail-date').textContent=label;
+  var today=new Date();var todayStr=today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
+  var isPast=dateStr<=todayStr;
+  document.getElementById('cal-detail-title').textContent=isPast?'What happened this day':'What\'s planned';
+  var planData=JSON.parse(localStorage.getItem('wb_planAhead')||'[]');
+  var woreData=JSON.parse(localStorage.getItem('wb_whatIWore')||'[]');
+  var dayPlans=planData.filter(function(p){return p.date===dateStr;});
+  var dayWore=woreData.filter(function(w){return w.date===dateStr;});
+  var html='';
+  if(dayPlans.length){
+    dayPlans.forEach(function(p){
+      html+='<div class="plan-log-card">';
+      html+='<div style="font-size:11px;letter-spacing:0.25em;color:#2E3F6F;text-transform:uppercase;font-weight:700;margin-bottom:4px">Planned &#8212; '+p.occasion+'</div>';
+      if(p.outfit){
+        var slots=['top','bottom','shoes','outerwear','accessories'];
+        var allOutfits=window._lastOutfits||[];
+        slots.forEach(function(k){var piece=p.outfit[k];if(piece&&piece.name&&piece.name.trim()){
+          var matched=piece.wardrobeId?allOutfits.find(function(x){return x.id===piece.wardrobeId;}):null;
+          var imgSrc=matched?(matched.image_data||matched.image_url):null;
+          html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">';
+          if(imgSrc)html+='<img src="'+imgSrc.replace(/'/g,'&#39;')+'" style="width:42px;height:52px;object-fit:cover;object-position:top;flex-shrink:0">';
+          html+='<div style="font-size:14px;color:#000;font-weight:700">'+piece.name+'</div></div>';
+        }});
+      } else {
+        html+='<div style="font-size:14px;color:#555;font-style:italic">'+p.planTitle+'</div>';
+      }
+      if(p.note)html+='<div style="font-size:13px;color:#888;font-style:italic;margin-top:4px">'+p.note+'</div>';
+      html+='</div>';
+    });
+  }
+  if(dayWore.length){
+    dayWore.forEach(function(w){
+      html+='<div class="wore-log-card">';
+      html+='<div style="font-size:11px;letter-spacing:0.25em;color:#4a7a5a;text-transform:uppercase;font-weight:700;margin-bottom:6px">Wore this'+(w.occasion?' &#8212; '+w.occasion:'')+'</div>';
+      if(w.imageData)html+='<img src="'+w.imageData+'" style="width:100%;max-height:260px;object-fit:cover;object-position:top;display:block;margin-bottom:8px;cursor:zoom-in" onclick="openLightbox(\''+w.imageData.replace(/'/g,'&#39;')+'\',\'What I wore\')">';
+      if(w.description)html+='<div style="font-size:15px;font-weight:700;color:#000;margin-bottom:4px">'+w.description+'</div>';
+      if(w.note)html+='<div style="font-size:14px;color:#555;font-style:italic">'+w.note+'</div>';
+      html+='</div>';
+    });
+  }
+  if(!dayPlans.length&&!dayWore.length){
+    html='<div style="font-size:15px;color:#999;font-style:italic;padding:12px 0">'+(isPast?'Nothing logged for this day.':'Nothing planned yet.')+'</div>';
+  }
+  document.getElementById('cal-detail-content').innerHTML=html;
+  // Show/hide wore section — only for today or past
+  document.getElementById('cal-wore-section').style.display=isPast?'block':'none';
+  // Reset wore form
+  document.getElementById('wore-photo-preview').style.display='none';
+  document.getElementById('wore-photo-preview').innerHTML='';
+  var di=document.getElementById('wore-desc-input');if(di)di.value='';
+  var ni=document.getElementById('wore-note-input');if(ni)ni.value='';
+  document.querySelectorAll('[id^="wore-occ-"]').forEach(function(b){b.classList.remove('active');});
+  selectWoreTab('mirror');
+  window._worePhotoData=null;window._woreSelectedOcc='';
+  document.getElementById('cal-detail').style.display='block';
+}
+
+function selectWoreTab(tab){
+  document.getElementById('wore-mirror-section').style.display=tab==='mirror'?'block':'none';
+  document.getElementById('wore-pieces-section').style.display=tab==='pieces'?'block':'none';
+  document.getElementById('wore-tab-mirror').style.background=tab==='mirror'?'#000':'#fff';
+  document.getElementById('wore-tab-mirror').style.color=tab==='mirror'?'#fff':'#666';
+  document.getElementById('wore-tab-mirror').style.borderColor=tab==='mirror'?'#000':'#e0e0e0';
+  document.getElementById('wore-tab-pieces').style.background=tab==='pieces'?'#000':'#fff';
+  document.getElementById('wore-tab-pieces').style.color=tab==='pieces'?'#fff':'#666';
+  document.getElementById('wore-tab-pieces').style.borderColor=tab==='pieces'?'#000':'#e0e0e0';
+}
+function selectWoreOcc(occ,btn){
+  window._woreSelectedOcc=occ;
+  document.querySelectorAll('[id^="wore-occ-"]').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+function handleWorePhoto(files){
+  if(!files||!files.length)return;
+  var file=files[0];var reader=new FileReader();
+  reader.onload=function(e){
+    compressImage(e.target.result,800).then(function(compressed){
+      window._worePhotoData=compressed;
+      var prev=document.getElementById('wore-photo-preview');
+      prev.innerHTML='<img src="'+compressed+'" style="width:100%;max-height:280px;object-fit:cover;display:block;margin-bottom:4px"><div style="font-size:12px;color:#4a7a5a;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;padding:4px 0">Photo ready</div>';
+      prev.style.display='block';
+    });
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('wore-photo-input').value='';
+}
+async function saveWhatIWore(){
+  if(!calSelectedDate)return;
+  var btn=document.getElementById('wore-save-btn');
+  btn.disabled=true;btn.textContent='Saving...';
+  var mirrorVisible=document.getElementById('wore-mirror-section').style.display!=='none';
+  var desc='';
+  if(!mirrorVisible){var di=document.getElementById('wore-desc-input');desc=di?di.value.trim():'';}
+  var note='';var ni=document.getElementById('wore-note-input');if(ni)note=ni.value.trim();
+  var occasion=window._woreSelectedOcc||'';
+  var imageData=window._worePhotoData||null;
+  // Build the log entry
+  var entry={date:calSelectedDate,occasion:occasion,description:desc||'Outfit',note:note,imageData:imageData,savedAt:Date.now()};
+  var existing=JSON.parse(localStorage.getItem('wb_whatIWore')||'[]');
+  existing.push(entry);
+  if(existing.length>200)existing=existing.slice(-200);
+  localStorage.setItem('wb_whatIWore',JSON.stringify(existing));
+  // Also save to style_feedback so AI learns from it
+  if(desc||note){
+    var feedbackText='What I actually wore on '+calSelectedDate+(occasion?' for '+occasion:'')+': '+(desc||'')+(note?' — Note: '+note:'');
+    await sb.from('style_feedback').insert({piece_name:'What I wore: '+calSelectedDate,feedback:'note',reason:feedbackText,occasion:occasion||'Day',weather:''});
+  }
+  // Mark pieces as worn in wb_wornTops if description has top-like keywords
+  if(desc){
+    try{
+      var wt=JSON.parse(localStorage.getItem('wb_wornTops')||'[]');
+      wt.push({id:'wore-'+Date.now(),name:desc,cat:'Top',date:calSelectedDate,ts:Date.now()});
+      if(wt.length>100)wt=wt.slice(-100);
+      localStorage.setItem('wb_wornTops',JSON.stringify(wt));
+    }catch(e){}
+  }
+  btn.disabled=false;btn.textContent='Save What I Wore';
+  // Refresh the detail view
+  showCalDetail(calSelectedDate);
+  renderCalendar();
 }
 </script>
 
